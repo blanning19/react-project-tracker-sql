@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Container, Card, Button, Alert, Spinner } from "react-bootstrap";
 import FetchInstance from "./fetchClient";
 import { useNavigate, useParams } from "react-router-dom";

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import FetchInstance from "./fetchClient"; // <- changed
-import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Alert, Card } from "react-bootstrap";
 import { useForm, Controller } from "react-hook-form";
 import Dayjs from "dayjs";
 import { useNavigate, useParams } from "react-router-dom";
@@ -149,6 +149,11 @@ const Edit = () => {
 
       <Card className="shadow-sm">
         <Card.Body>
+          {apiError && (
+            <Alert variant="danger" className="fw-bold">
+              {apiError}
+            </Alert>
+          )}          
           <Form onSubmit={handleSubmit(submission)}>
             {/* Row 1 */}
             <Row className="g-4 mb-3">
