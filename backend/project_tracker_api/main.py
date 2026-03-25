@@ -1,12 +1,19 @@
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+import logging
+
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from . import crud, schemas
 from .config import get_settings
 from .database import Base, engine, get_db
+from .logging_config import configure_logging
 
 settings = get_settings()
+configure_logging(settings.log_level, settings.log_file_path)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Project Tracker API", version="0.1.0")
 app.add_middleware(
@@ -21,6 +28,17 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
+    logger.info("Project Tracker API started.")
+
+
+@app.exception_handler(SQLAlchemyError)
+def handle_database_error(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+    del exc
+    logger.exception("Unhandled database error.", extra={"path": str(request.url.path)})
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "A database error occurred."},
+    )
 
 
 @app.get("/health")
@@ -36,6 +54,7 @@ def list_projects(db: Session = Depends(get_db)):
 @app.post("/api/projects", response_model=schemas.ProjectRead, status_code=status.HTTP_201_CREATED)
 def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)):
     if crud.get_project(db, payload.ProjectUID):
+        logger.warning("Rejected duplicate project create.", extra={"projectUID": payload.ProjectUID})
         raise HTTPException(status_code=409, detail="ProjectUID already exists.")
     return crud.create_project(db, payload)
 
@@ -44,6 +63,7 @@ def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)
 def update_project(project_id: int, payload: schemas.ProjectUpdate, db: Session = Depends(get_db)):
     project = crud.get_project(db, project_id)
     if not project:
+        logger.warning("Project not found during update.", extra={"projectUID": project_id})
         raise HTTPException(status_code=404, detail="Project not found.")
     return crud.update_project(db, project, payload)
 
@@ -52,6 +72,7 @@ def update_project(project_id: int, payload: schemas.ProjectUpdate, db: Session 
 def delete_project(project_id: int, db: Session = Depends(get_db)):
     project = crud.get_project(db, project_id)
     if not project:
+        logger.warning("Project not found during delete.", extra={"projectUID": project_id})
         raise HTTPException(status_code=404, detail="Project not found.")
     crud.delete_project(db, project)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -60,8 +81,13 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
 @app.post("/api/tasks", response_model=schemas.TaskRead, status_code=status.HTTP_201_CREATED)
 def create_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
     if crud.get_task(db, payload.TaskUID):
+        logger.warning("Rejected duplicate task create.", extra={"taskUID": payload.TaskUID})
         raise HTTPException(status_code=409, detail="TaskUID already exists.")
     if not crud.get_project(db, payload.ProjectUID):
+        logger.warning(
+            "Task create failed due to missing project.",
+            extra={"taskUID": payload.TaskUID, "projectUID": payload.ProjectUID},
+        )
         raise HTTPException(status_code=404, detail="Project for task not found.")
     return crud.create_task(db, payload)
 
@@ -70,8 +96,13 @@ def create_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
 def update_task(task_id: int, payload: schemas.TaskUpdate, db: Session = Depends(get_db)):
     task = crud.get_task(db, task_id)
     if not task:
+        logger.warning("Task not found during update.", extra={"taskUID": task_id})
         raise HTTPException(status_code=404, detail="Task not found.")
     if not crud.get_project(db, payload.ProjectUID):
+        logger.warning(
+            "Task update failed due to missing project.",
+            extra={"taskUID": task_id, "projectUID": payload.ProjectUID},
+        )
         raise HTTPException(status_code=404, detail="Project for task not found.")
     return crud.update_task(db, task, payload)
 
@@ -80,6 +111,7 @@ def update_task(task_id: int, payload: schemas.TaskUpdate, db: Session = Depends
 def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = crud.get_task(db, task_id)
     if not task:
+        logger.warning("Task not found during delete.", extra={"taskUID": task_id})
         raise HTTPException(status_code=404, detail="Task not found.")
     crud.delete_task(db, task)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -94,6 +126,10 @@ def get_settings_for_user(user_id: str, db: Session = Depends(get_db)):
 @app.put("/api/settings/{user_id}", response_model=schemas.UserSettingsRead)
 def update_settings_for_user(user_id: str, payload: schemas.UserSettingsUpdate, db: Session = Depends(get_db)):
     if payload.userId != user_id:
+        logger.warning(
+            "Rejected settings update due to user mismatch.",
+            extra={"routeUserId": user_id, "payloadUserId": payload.userId},
+        )
         raise HTTPException(status_code=400, detail="User id mismatch.")
     setting = crud.get_or_create_settings(db, user_id)
     return crud.update_settings(db, setting, payload)

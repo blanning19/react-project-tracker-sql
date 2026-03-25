@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class TaskBase(BaseModel):
@@ -14,6 +14,12 @@ class TaskBase(BaseModel):
     Status: str
     IsMilestone: bool = False
     Notes: str = ""
+
+    @model_validator(mode="after")
+    def validate_task_dates(self) -> "TaskBase":
+        if self.Finish < self.Start:
+            raise ValueError("Finish date must be on or after the start date.")
+        return self
 
 
 class TaskCreate(TaskBase):
@@ -42,6 +48,12 @@ class ProjectBase(BaseModel):
     Priority: str
     Notes: str = ""
     SourceFileName: str
+
+    @model_validator(mode="after")
+    def validate_project_dates(self) -> "ProjectBase":
+        if self.Finish < self.Start:
+            raise ValueError("Finish date must be on or after the start date.")
+        return self
 
 
 class ProjectCreate(ProjectBase):

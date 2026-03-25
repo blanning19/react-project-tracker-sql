@@ -17,12 +17,29 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/project_tracker"
     cors_origins: Annotated[List[str], NoDecode] = ["http://127.0.0.1:5173", "http://localhost:5173"]
+    log_level: str = "INFO"
+    log_file_path: str | None = str(BASE_DIR / "logs" / "project_tracker_api.log")
 
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_origins(cls, value: str | List[str]) -> List[str]:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("log_level")
+    @classmethod
+    def normalize_log_level(cls, value: str) -> str:
+        return value.upper()
+
+    @field_validator("log_file_path", mode="before")
+    @classmethod
+    def normalize_log_file_path(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
         return value
 
 

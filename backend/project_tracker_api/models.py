@@ -21,14 +21,18 @@ class Project(Base):
     Notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     SourceFileName: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    tasks: Mapped[list["Task"]] = relationship(back_populates="project", cascade="all, delete-orphan", order_by="Task.TaskUID")
+    tasks: Mapped[list["Task"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan", order_by="Task.TaskUID"
+    )
 
 
 class Task(Base):
     __tablename__ = "tasks"
 
     TaskUID: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    ProjectUID: Mapped[int] = mapped_column(ForeignKey("projects.ProjectUID", ondelete="CASCADE"), nullable=False, index=True)
+    ProjectUID: Mapped[int] = mapped_column(
+        ForeignKey("projects.ProjectUID", ondelete="CASCADE"), nullable=False, index=True
+    )
     TaskName: Mapped[str] = mapped_column(String(255), nullable=False)
     ResourceNames: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     Start: Mapped[date] = mapped_column(Date, nullable=False)

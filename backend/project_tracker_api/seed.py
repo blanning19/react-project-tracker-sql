@@ -3,7 +3,6 @@ from datetime import date, timedelta
 from .database import Base, SessionLocal, engine
 from .models import Manager, Project, Task, TeamMember, UserSetting
 
-
 PROJECTS = [
     {
         "ProjectUID": 1001,
@@ -60,12 +59,84 @@ PROJECTS = [
 ]
 
 TASKS = [
-    {"TaskUID": 5001, "ProjectUID": 1001, "TaskName": "Requirements lock", "ResourceNames": "Ava Patel", "Start": date.today() - timedelta(days=35), "Finish": date.today() - timedelta(days=20), "DurationDays": 15, "PercentComplete": 100, "Status": "Completed", "IsMilestone": True, "Notes": ""},
-    {"TaskUID": 5002, "ProjectUID": 1001, "TaskName": "Migration scripts", "ResourceNames": "Ava Patel, Sam Rivera", "Start": date.today() - timedelta(days=10), "Finish": date.today() + timedelta(days=12), "DurationDays": 22, "PercentComplete": 65, "Status": "On Track", "IsMilestone": False, "Notes": ""},
-    {"TaskUID": 5003, "ProjectUID": 1002, "TaskName": "Server cutover", "ResourceNames": "Mateo Gomez", "Start": date.today() - timedelta(days=18), "Finish": date.today() - timedelta(days=2), "DurationDays": 16, "PercentComplete": 75, "Status": "At Risk", "IsMilestone": False, "Notes": ""},
-    {"TaskUID": 5004, "ProjectUID": 1002, "TaskName": "Network validation", "ResourceNames": "Ava Patel", "Start": date.today() - timedelta(days=12), "Finish": date.today() + timedelta(days=3), "DurationDays": 15, "PercentComplete": 40, "Status": "Blocked", "IsMilestone": False, "Notes": "Awaiting vendor fix."},
-    {"TaskUID": 5005, "ProjectUID": 1003, "TaskName": "UAT signoff", "ResourceNames": "Jordan Lee", "Start": date.today() - timedelta(days=5), "Finish": date.today() + timedelta(days=4), "DurationDays": 9, "PercentComplete": 80, "Status": "In Progress", "IsMilestone": False, "Notes": ""},
-    {"TaskUID": 5006, "ProjectUID": 1003, "TaskName": "Production release", "ResourceNames": "Ava Patel", "Start": date.today() + timedelta(days=8), "Finish": date.today() + timedelta(days=15), "DurationDays": 7, "PercentComplete": 0, "Status": "Not Started", "IsMilestone": True, "Notes": ""},
+    {
+        "TaskUID": 5001,
+        "ProjectUID": 1001,
+        "TaskName": "Requirements lock",
+        "ResourceNames": "Ava Patel",
+        "Start": date.today() - timedelta(days=35),
+        "Finish": date.today() - timedelta(days=20),
+        "DurationDays": 15,
+        "PercentComplete": 100,
+        "Status": "Completed",
+        "IsMilestone": True,
+        "Notes": "",
+    },
+    {
+        "TaskUID": 5002,
+        "ProjectUID": 1001,
+        "TaskName": "Migration scripts",
+        "ResourceNames": "Ava Patel, Sam Rivera",
+        "Start": date.today() - timedelta(days=10),
+        "Finish": date.today() + timedelta(days=12),
+        "DurationDays": 22,
+        "PercentComplete": 65,
+        "Status": "On Track",
+        "IsMilestone": False,
+        "Notes": "",
+    },
+    {
+        "TaskUID": 5003,
+        "ProjectUID": 1002,
+        "TaskName": "Server cutover",
+        "ResourceNames": "Mateo Gomez",
+        "Start": date.today() - timedelta(days=18),
+        "Finish": date.today() - timedelta(days=2),
+        "DurationDays": 16,
+        "PercentComplete": 75,
+        "Status": "At Risk",
+        "IsMilestone": False,
+        "Notes": "",
+    },
+    {
+        "TaskUID": 5004,
+        "ProjectUID": 1002,
+        "TaskName": "Network validation",
+        "ResourceNames": "Ava Patel",
+        "Start": date.today() - timedelta(days=12),
+        "Finish": date.today() + timedelta(days=3),
+        "DurationDays": 15,
+        "PercentComplete": 40,
+        "Status": "Blocked",
+        "IsMilestone": False,
+        "Notes": "Awaiting vendor fix.",
+    },
+    {
+        "TaskUID": 5005,
+        "ProjectUID": 1003,
+        "TaskName": "UAT signoff",
+        "ResourceNames": "Jordan Lee",
+        "Start": date.today() - timedelta(days=5),
+        "Finish": date.today() + timedelta(days=4),
+        "DurationDays": 9,
+        "PercentComplete": 80,
+        "Status": "In Progress",
+        "IsMilestone": False,
+        "Notes": "",
+    },
+    {
+        "TaskUID": 5006,
+        "ProjectUID": 1003,
+        "TaskName": "Production release",
+        "ResourceNames": "Ava Patel",
+        "Start": date.today() + timedelta(days=8),
+        "Finish": date.today() + timedelta(days=15),
+        "DurationDays": 7,
+        "PercentComplete": 0,
+        "Status": "Not Started",
+        "IsMilestone": True,
+        "Notes": "",
+    },
 ]
 
 TEAM_MEMBERS = [
