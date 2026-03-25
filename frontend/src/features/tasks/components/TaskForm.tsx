@@ -1,0 +1,261 @@
+import { FormEvent, useEffect, useState } from 'react';
+import { Button, Card, Col, Form, Row } from 'react-bootstrap';
+import { apiFetch } from '../../../shared/api/http';
+import { ProjectRecord, TaskPayload, TaskRecord, TeamMemberRecord } from '../../../shared/types/models';
+
+interface TaskFormProps {
+    task?: TaskRecord | null;
+    projects: ProjectRecord[];
+    activeProjectId?: number;
+    onSave: (payload: TaskPayload, taskId?: number) => Promise<void>;
+    onClear: () => void;
+    showCreateAction?: boolean;
+}
+
+const createEmptyTask = (projectId?: number): TaskPayload => ({
+    TaskUID: 0,
+    ProjectUID: projectId ?? 0,
+    TaskName: '',
+    ResourceNames: '',
+    Start: new Date().toISOString().slice(0, 10),
+    Finish: new Date().toISOString().slice(0, 10),
+    DurationDays: 1,
+    PercentComplete: 0,
+    Status: 'Not Started',
+    IsMilestone: false,
+    Notes: '',
+});
+
+function toEditableTask(task: TaskRecord): TaskPayload {
+    return {
+        TaskUID: task.TaskUID,
+        ProjectUID: task.ProjectUID,
+        TaskName: task.TaskName,
+        ResourceNames: task.ResourceNames,
+        Start: task.Start,
+        Finish: task.Finish,
+        DurationDays: task.DurationDays,
+        PercentComplete: task.PercentComplete,
+        Status: task.Status,
+        IsMilestone: task.IsMilestone,
+        Notes: task.Notes,
+    };
+}
+
+function parseAssignees(resourceNames: string): string[] {
+    return resourceNames
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean);
+}
+
+export function TaskForm({ task, projects, activeProjectId, onSave, onClear, showCreateAction = true }: TaskFormProps) {
+    const [formState, setFormState] = useState<TaskPayload>(createEmptyTask(activeProjectId));
+    const [teamMembers, setTeamMembers] = useState<TeamMemberRecord[]>([]);
+
+    useEffect(() => {
+        if (task) {
+            setFormState(toEditableTask(task));
+        } else {
+            setFormState(createEmptyTask(activeProjectId));
+        }
+    }, [activeProjectId, task]);
+
+    useEffect(() => {
+        apiFetch<TeamMemberRecord[]>('/team-members')
+            .then(setTeamMembers)
+            .catch(() => setTeamMembers([]));
+    }, []);
+
+    const activeProject = projects.find((project) => project.ProjectUID === formState.ProjectUID);
+    const selectedAssignees = parseAssignees(formState.ResourceNames);
+    const assigneeOptions = Array.from(
+        new Set([...teamMembers.map((member) => member.displayName), ...selectedAssignees]),
+    ).sort((left, right) => {
+        const leftSelected = selectedAssignees.includes(left);
+        const rightSelected = selectedAssignees.includes(right);
+
+        if (leftSelected !== rightSelected) {
+            return leftSelected ? -1 : 1;
+        }
+
+        return left.localeCompare(right);
+    });
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        await onSave(formState, task?.TaskUID);
+        if (!task) {
+            setFormState(createEmptyTask(activeProjectId));
+        }
+    }
+
+    function handleReset() {
+        if (task) {
+            setFormState(toEditableTask(task));
+            return;
+        }
+
+        setFormState(createEmptyTask(activeProjectId));
+        onClear();
+    }
+
+    return (
+        <Card className="shadow-sm border-0 h-100 dashboard-panel">
+            <Card.Body>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <p className="text-uppercase small text-body-secondary mb-1">Tasks</p>
+                        <h2 className="h5 mb-0">{task ? 'Edit Task' : 'Create Task'}</h2>
+                    </div>
+                    {task && showCreateAction ? (
+                        <Button variant="outline-secondary" size="sm" onClick={onClear}>
+                            New task
+                        </Button>
+                    ) : null}
+                </div>
+                <Form onSubmit={handleSubmit}>
+                    <Row className="g-3">
+                        <Col md={12}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">ProjectUID</Form.Label>
+                                <Form.Control
+                                    value={
+                                        activeProject
+                                            ? `${activeProject.ProjectUID} - ${activeProject.ProjectName}`
+                                            : String(formState.ProjectUID || '')
+                                    }
+                                    readOnly
+                                    plaintext
+                                />
+                            </Form.Group>
+                        </Col>
+                        <Col md={12}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">TaskName</Form.Label>
+                                <Form.Control
+                                    value={formState.TaskName}
+                                    onChange={(event) => setFormState({ ...formState, TaskName: event.target.value })}
+                                    required
+                                />
+                            </Form.Group>
+                        </Col>
+                        <Col md={12}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Assignees</Form.Label>
+                                <Form.Select
+                                    multiple
+                                    value={selectedAssignees}
+                                    onChange={(event) => {
+                                        const nextAssignees = Array.from(
+                                            event.target.selectedOptions,
+                                            (option) => option.value,
+                                        );
+                                        setFormState({ ...formState, ResourceNames: nextAssignees.join(', ') });
+                                    }}
+                                >
+                                    {assigneeOptions.map((displayName) => (
+                                        <option key={displayName} value={displayName}>
+                                            {displayName}
+                                        </option>
+                                    ))}
+                                </Form.Select>
+                                <Form.Text className="text-body-secondary">
+                                    Hold `Ctrl` on Windows or `Command` on Mac to select multiple assignees.
+                                </Form.Text>
+                            </Form.Group>
+                        </Col>
+                        <Col md={4}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Start</Form.Label>
+                                <Form.Control
+                                    type="date"
+                                    value={formState.Start}
+                                    onChange={(event) => setFormState({ ...formState, Start: event.target.value })}
+                                />
+                            </Form.Group>
+                        </Col>
+                        <Col md={4}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Finish</Form.Label>
+                                <Form.Control
+                                    type="date"
+                                    value={formState.Finish}
+                                    onChange={(event) => setFormState({ ...formState, Finish: event.target.value })}
+                                />
+                            </Form.Group>
+                        </Col>
+                        <Col md={4}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">DurationDays</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    min={1}
+                                    value={formState.DurationDays}
+                                    onChange={(event) =>
+                                        setFormState({ ...formState, DurationDays: Number(event.target.value) })
+                                    }
+                                />
+                            </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Status</Form.Label>
+                                <Form.Select
+                                    value={formState.Status}
+                                    onChange={(event) => setFormState({ ...formState, Status: event.target.value })}
+                                >
+                                    <option>Not Started</option>
+                                    <option>On Track</option>
+                                    <option>In Progress</option>
+                                    <option>At Risk</option>
+                                    <option>Blocked</option>
+                                    <option>Completed</option>
+                                </Form.Select>
+                            </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">PercentComplete</Form.Label>
+                                <Form.Control
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={formState.PercentComplete}
+                                    onChange={(event) =>
+                                        setFormState({ ...formState, PercentComplete: Number(event.target.value) })
+                                    }
+                                />
+                            </Form.Group>
+                        </Col>
+                        <Col md={12}>
+                            <Form.Check
+                                id="task-milestone"
+                                label="IsMilestone"
+                                checked={formState.IsMilestone}
+                                onChange={(event) => setFormState({ ...formState, IsMilestone: event.target.checked })}
+                            />
+                        </Col>
+                        <Col md={12}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Notes</Form.Label>
+                                <Form.Control
+                                    as="textarea"
+                                    rows={3}
+                                    value={formState.Notes}
+                                    onChange={(event) => setFormState({ ...formState, Notes: event.target.value })}
+                                />
+                            </Form.Group>
+                        </Col>
+                    </Row>
+                    <div className="d-flex gap-2 mt-4">
+                        <Button type="submit">{task ? 'Update Task' : 'Create Task'}</Button>
+                        <Button type="button" variant="outline-secondary" onClick={handleReset}>
+                            Reset
+                        </Button>
+                    </div>
+                </Form>
+            </Card.Body>
+        </Card>
+    );
+}
