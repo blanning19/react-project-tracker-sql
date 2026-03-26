@@ -5,7 +5,7 @@ Project Tracker is a full-stack project and task tracking workspace with a React
 The repository uses a monorepo-style structure:
 
 ```text
-project-tracker-1/
+react-project-tracker-sql/
   frontend/
   backend/
   README.md
@@ -40,6 +40,7 @@ project-tracker-1/
 - Pydantic Settings
 - PostgreSQL
 - Psycopg
+- Python virtual environment in `backend/.venv`
 - Ruff configuration in `backend/pyproject.toml`
 
 ## Architecture Overview
@@ -122,7 +123,7 @@ Example areas:
 ## Repository Structure
 
 ```text
-project-tracker-1/
+react-project-tracker-sql/
   frontend/
     src/
       app/
@@ -176,6 +177,8 @@ Install backend dependencies:
 npm run backend:install
 ```
 
+This installs the backend package plus dev tools such as Ruff into `backend/.venv`.
+
 ### 3. Configure Environment Variables
 
 Copy:
@@ -220,6 +223,8 @@ npm run frontend:dev
 From the repo root:
 
 ```powershell
+npm run check
+
 npm run frontend:install
 npm run frontend:dev
 npm run frontend:build
@@ -229,6 +234,9 @@ npm run backend:venv
 npm run backend:install
 npm run backend:seed
 npm run backend:dev
+npm run backend:lint
+npm run backend:format:check
+npm run backend:format
 ```
 
 From `frontend/`:
@@ -239,6 +247,48 @@ npm run build
 npm run lint
 npm run format
 ```
+
+## Validation Workflow
+
+After larger changes, run these checks from the repo root:
+
+```powershell
+npm run check
+```
+
+That command runs:
+
+- frontend ESLint
+- frontend production build with Vite
+- backend Ruff lint checks
+- backend Ruff format checks
+
+If you want to run them individually:
+
+```powershell
+npm run frontend:lint
+npm run frontend:build
+npm run backend:lint
+npm run backend:format:check
+```
+
+For backend formatting fixes:
+
+```powershell
+npm run backend:format
+```
+
+Current testing status:
+
+- frontend automated tests are not set up yet
+- backend automated tests are not set up yet
+- `vite build` is a build verification step, not a test suite
+- Ruff is a linter and formatter, not a test runner
+
+The next recommended additions are:
+
+- `pytest` for FastAPI route, schema, and CRUD tests
+- `vitest` for frontend utility and component tests
 
 ## App URLs
 
@@ -261,6 +311,7 @@ Theme handling is driven through `ThemeProvider`, which applies `data-bs-theme` 
 - Use spaces only and 4-space indentation
 - Frontend formatting is managed with Prettier
 - Frontend linting is managed with ESLint flat config
+- Backend commands should be run through the repo virtual environment in `backend/.venv`
 - Backend style is configured for Ruff in `backend/pyproject.toml`
 - Keep the root `README.md` as the main entry point for project setup and architecture
 

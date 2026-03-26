@@ -1,15 +1,19 @@
 {
-  "name": "project-tracker-1-workspace",
+  "name": "react-project-tracker-sql-workspace",
   "private": true,
   "version": "1.0.0",
   "scripts": {
+    "check": "npm run frontend:lint && npm run frontend:build && npm run backend:lint && npm run backend:format:check",
     "frontend:install": "npm --prefix frontend install",
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
     "frontend:lint": "npm --prefix frontend run lint",
     "backend:venv": "python -m venv backend/.venv",
-    "backend:install": "python -m pip install -e backend",
-    "backend:dev": "python -m uvicorn backend.project_tracker_api.main:app --reload --app-dir .",
-    "backend:seed": "python -m backend.project_tracker_api.seed"
+    "backend:install": ".\\backend\\.venv\\Scripts\\python.exe -m pip install -e backend[dev]",
+    "backend:dev": ".\\backend\\.venv\\Scripts\\python.exe -m uvicorn backend.project_tracker_api.main:app --reload --app-dir .",
+    "backend:seed": ".\\backend\\.venv\\Scripts\\python.exe -m backend.project_tracker_api.seed",
+    "backend:lint": ".\\backend\\.venv\\Scripts\\python.exe -m ruff check backend",
+    "backend:format:check": ".\\backend\\.venv\\Scripts\\python.exe -m ruff format --check backend",
+    "backend:format": ".\\backend\\.venv\\Scripts\\python.exe -m ruff format backend"
   }
 }
