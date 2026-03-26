@@ -1,14 +1,24 @@
 import { Badge, Button, Card, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { ProjectRecord } from '../../../shared/types/models';
+import { SortDirection, ProjectRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 
+export type HomeProjectSortField =
+    | 'ProjectName'
+    | 'ProjectManager'
+    | 'CreatedDate'
+    | 'Status'
+    | 'Finish'
+    | 'OpenTasks';
+
 interface ProjectSummaryTableProps {
     projects: ProjectRecord[];
-    currentUserName: string;
     title: string;
     subtitle: string;
+    sortField: HomeProjectSortField;
+    sortDirection: SortDirection;
+    onSort: (field: HomeProjectSortField) => void;
     actionLabel?: string;
     onAction?: (project: ProjectRecord) => void;
     actionHref?: (project: ProjectRecord) => string;
@@ -16,13 +26,29 @@ interface ProjectSummaryTableProps {
 
 export function ProjectSummaryTable({
     projects,
-    currentUserName,
     title,
     subtitle,
+    sortField,
+    sortDirection,
+    onSort,
     actionLabel,
     onAction,
     actionHref,
 }: ProjectSummaryTableProps) {
+    function renderSortLabel(label: string, field: HomeProjectSortField) {
+        const indicator = sortField === field ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : '';
+        return (
+            <Button
+                variant="link"
+                className="p-0 text-decoration-none fw-semibold text-body"
+                onClick={() => onSort(field)}
+            >
+                {label}
+                {indicator}
+            </Button>
+        );
+    }
+
     return (
         <Card className="shadow-sm border-0 dashboard-panel">
             <Card.Body>
@@ -37,12 +63,12 @@ export function ProjectSummaryTable({
                     <Table hover className="align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>Project</th>
-                                <th>Manager</th>
-                                <th>Status</th>
-                                <th>Finish</th>
-                                <th>Tasks</th>
-                                <th>My Tasks</th>
+                                <th>{renderSortLabel('Project', 'ProjectName')}</th>
+                                <th>{renderSortLabel('Manager', 'ProjectManager')}</th>
+                                <th>{renderSortLabel('Create Date', 'CreatedDate')}</th>
+                                <th>{renderSortLabel('Status', 'Status')}</th>
+                                <th>{renderSortLabel('Finish', 'Finish')}</th>
+                                <th>{renderSortLabel('Open Tasks', 'OpenTasks')}</th>
                                 {actionLabel ? <th className="text-end">Action</th> : null}
                             </tr>
                         </thead>
@@ -54,21 +80,15 @@ export function ProjectSummaryTable({
                                         <small className="text-body-secondary">ProjectUID {project.ProjectUID}</small>
                                     </td>
                                     <td>{project.ProjectManager}</td>
+                                    <td>{formatDate(project.CreatedDate)}</td>
                                     <td>
                                         <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>
                                             {project.Status}
                                         </Badge>
                                     </td>
                                     <td>{formatDate(project.Finish)}</td>
-                                    <td>{project.tasks.length}</td>
                                     <td>
-                                        {
-                                            project.tasks.filter((task) =>
-                                                task.ResourceNames.toLowerCase().includes(
-                                                    currentUserName.toLowerCase(),
-                                                ),
-                                            ).length
-                                        }
+                                        {project.tasks.filter((task) => task.Status.toLowerCase() !== 'completed').length}
                                     </td>
                                     {actionLabel ? (
                                         <td className="text-end">

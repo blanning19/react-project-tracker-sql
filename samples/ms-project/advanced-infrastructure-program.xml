@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>Advanced Infrastructure Program</Name>
+  <Title>Advanced Infrastructure Program</Title>
+  <Author>Mateo Gomez</Author>
+  <StartDate>2026-06-01T08:00:00</StartDate>
+  <FinishDate>2026-07-24T17:00:00</FinishDate>
+  <Priority>900</Priority>
+  <CalendarUID>1</CalendarUID>
+  <Comments>Advanced sample for roadmap and dependency visualizations.</Comments>
+  <Calendars>
+    <Calendar>
+      <UID>1</UID>
+      <Name>Standard</Name>
+    </Calendar>
+  </Calendars>
+  <Tasks>
+    <Task>
+      <UID>1</UID>
+      <ID>1</ID>
+      <Name>Advanced Infrastructure Program</Name>
+      <Summary>1</Summary>
+      <WBS>1</WBS>
+      <OutlineNumber>1</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Start>2026-06-01T08:00:00</Start>
+      <Finish>2026-07-24T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>100</UID>
+      <ID>2</ID>
+      <Name>Foundation</Name>
+      <Summary>1</Summary>
+      <WBS>1.1</WBS>
+      <OutlineNumber>1.1</OutlineNumber>
+      <OutlineLevel>2</OutlineLevel>
+      <Start>2026-06-01T08:00:00</Start>
+      <Finish>2026-06-19T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>110</UID>
+      <ID>3</ID>
+      <Name>Environment assessment</Name>
+      <WBS>1.1.1</WBS>
+      <OutlineNumber>1.1.1</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-01T08:00:00</Start>
+      <Finish>2026-06-05T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>100</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Review current hosting, observability, and backup posture.</Notes>
+    </Task>
+    <Task>
+      <UID>120</UID>
+      <ID>4</ID>
+      <Name>Target architecture approved</Name>
+      <WBS>1.1.2</WBS>
+      <OutlineNumber>1.1.2</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-08T08:00:00</Start>
+      <Finish>2026-06-12T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>100</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Approve network segmentation, compute sizing, and failover model.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>110</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>130</UID>
+      <ID>5</ID>
+      <Name>Procurement complete</Name>
+      <WBS>1.1.3</WBS>
+      <OutlineNumber>1.1.3</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-15T08:00:00</Start>
+      <Finish>2026-06-19T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>75</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Complete final vendor and hardware approvals.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>120</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>200</UID>
+      <ID>6</ID>
+      <Name>Migration execution</Name>
+      <Summary>1</Summary>
+      <WBS>1.2</WBS>
+      <OutlineNumber>1.2</OutlineNumber>
+      <OutlineLevel>2</OutlineLevel>
+      <Start>2026-06-22T08:00:00</Start>
+      <Finish>2026-07-17T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>210</UID>
+      <ID>7</ID>
+      <Name>Build landing zone</Name>
+      <WBS>1.2.1</WBS>
+      <OutlineNumber>1.2.1</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-22T08:00:00</Start>
+      <Finish>2026-06-26T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>40</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Provision shared networking and access boundaries.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>130</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>220</UID>
+      <ID>8</ID>
+      <Name>Application migration wave</Name>
+      <WBS>1.2.2</WBS>
+      <OutlineNumber>1.2.2</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-29T08:00:00</Start>
+      <Finish>2026-07-10T17:00:00</Finish>
+      <Duration>PT80H0M0S</Duration>
+      <PercentComplete>15</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Move core services in controlled deployment waves.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>210</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>230</UID>
+      <ID>9</ID>
+      <Name>Operational readiness</Name>
+      <WBS>1.2.3</WBS>
+      <OutlineNumber>1.2.3</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-07-13T08:00:00</Start>
+      <Finish>2026-07-17T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Confirm monitoring, runbooks, and support shift coverage.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>220</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>300</UID>
+      <ID>10</ID>
+      <Name>Closeout</Name>
+      <Summary>1</Summary>
+      <WBS>1.3</WBS>
+      <OutlineNumber>1.3</OutlineNumber>
+      <OutlineLevel>2</OutlineLevel>
+      <Start>2026-07-20T08:00:00</Start>
+      <Finish>2026-07-24T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>310</UID>
+      <ID>11</ID>
+      <Name>Cutover milestone</Name>
+      <WBS>1.3.1</WBS>
+      <OutlineNumber>1.3.1</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-07-20T09:00:00</Start>
+      <Finish>2026-07-20T17:00:00</Finish>
+      <Duration>PT8H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>1</Milestone>
+      <Notes>Official production cutover checkpoint.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>230</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>320</UID>
+      <ID>12</ID>
+      <Name>Post-implementation review</Name>
+      <WBS>1.3.2</WBS>
+      <OutlineNumber>1.3.2</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-07-21T08:00:00</Start>
+      <Finish>2026-07-24T17:00:00</Finish>
+      <Duration>PT32H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Review migration metrics, incident trends, and follow-up actions.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>310</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+  </Tasks>
+  <Resources>
+    <Resource>
+      <UID>1</UID>
+      <Name>Mateo Gomez</Name>
+    </Resource>
+    <Resource>
+      <UID>2</UID>
+      <Name>Ava Patel</Name>
+    </Resource>
+    <Resource>
+      <UID>3</UID>
+      <Name>Taylor Brooks</Name>
+    </Resource>
+    <Resource>
+      <UID>4</UID>
+      <Name>Casey Nguyen</Name>
+    </Resource>
+  </Resources>
+  <Assignments>
+    <Assignment>
+      <TaskUID>110</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>120</TaskUID>
+      <ResourceUID>2</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>130</TaskUID>
+      <ResourceUID>3</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>210</TaskUID>
+      <ResourceUID>4</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>220</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>220</TaskUID>
+      <ResourceUID>2</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>230</TaskUID>
+      <ResourceUID>3</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>310</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>320</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>320</TaskUID>
+      <ResourceUID>4</ResourceUID>
+    </Assignment>
+  </Assignments>
+</Project>

@@ -1,11 +1,13 @@
 import logging
 from datetime import date
+from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from . import models, schemas
+from .ms_project_import import ImportedProject
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,11 @@ def serialize_task(task: models.Task) -> schemas.TaskRead:
             "TaskUID": task.TaskUID,
             "ProjectUID": task.ProjectUID,
             "TaskName": task.TaskName,
+            "OutlineLevel": task.OutlineLevel,
+            "OutlineNumber": task.OutlineNumber,
+            "WBS": task.WBS,
+            "IsSummary": task.IsSummary,
+            "Predecessors": task.Predecessors,
             "ResourceNames": task.ResourceNames,
             "Start": task.Start,
             "Finish": task.Finish,
@@ -73,6 +80,8 @@ def serialize_project(project: models.Project) -> schemas.ProjectRead:
             "ProjectUID": project.ProjectUID,
             "ProjectName": project.ProjectName,
             "ProjectManager": project.ProjectManager,
+            "CreatedDate": project.CreatedDate,
+            "CalendarName": project.CalendarName,
             "Start": project.Start,
             "Finish": project.Finish,
             "DurationDays": duration_days,
@@ -93,6 +102,122 @@ def get_projects(db: Session) -> list[schemas.ProjectRead]:
     ).all()
     logger.info("Loaded projects.", extra={"projectCount": len(projects)})
     return [serialize_project(project) for project in projects]
+
+
+def get_next_project_uid(db: Session) -> int:
+    current_max = db.scalar(select(func.max(models.Project.ProjectUID)))
+    return (current_max or 1000) + 1
+
+
+def get_next_task_uid(db: Session) -> int:
+    current_max = db.scalar(select(func.max(models.Task.TaskUID)))
+    return (current_max or 5000) + 1
+
+
+def get_next_member_id(db: Session) -> int:
+    current_max = db.scalar(select(func.max(models.TeamMember.member_id)))
+    return (current_max or 0) + 1
+
+
+def get_next_manager_id(db: Session) -> int:
+    current_max = db.scalar(select(func.max(models.Manager.manager_id)))
+    return (current_max or 0) + 1
+
+
+def ensure_manager_exists(db: Session, display_name: str) -> None:
+    normalized_name = display_name.strip()
+    if not normalized_name:
+        return
+
+    existing = db.scalar(select(models.Manager).where(models.Manager.display_name == normalized_name))
+    if existing:
+        return
+
+    db.add(models.Manager(manager_id=get_next_manager_id(db), display_name=normalized_name))
+
+
+def ensure_team_members_exist(db: Session, names: list[str]) -> None:
+    query = select(models.TeamMember.display_name).where(models.TeamMember.display_name.in_(names))
+    existing_names = {name for name in db.scalars(query).all()}
+    next_member_id = get_next_member_id(db)
+    for name in names:
+        normalized_name = name.strip()
+        if not normalized_name or normalized_name in existing_names:
+            continue
+        db.add(models.TeamMember(member_id=next_member_id, display_name=normalized_name))
+        existing_names.add(normalized_name)
+        next_member_id += 1
+
+
+def import_project(db: Session, imported_project: ImportedProject) -> schemas.ProjectRead:
+    project_uid = get_next_project_uid(db)
+    ensure_manager_exists(db, imported_project.manager)
+
+    team_member_names = sorted(
+        {
+            resource_name.strip()
+            for task in imported_project.tasks
+            for resource_name in task.resource_names.split(",")
+            if resource_name.strip()
+        }
+    )
+    if team_member_names:
+        ensure_team_members_exist(db, team_member_names)
+
+    project = models.Project(
+        ProjectUID=project_uid,
+        ProjectName=imported_project.name,
+        ProjectManager=imported_project.manager,
+        CreatedDate=date.today(),
+        CalendarName=imported_project.calendar_name,
+        Start=imported_project.start,
+        Finish=imported_project.finish,
+        DurationDays=imported_project.duration_days,
+        PercentComplete=imported_project.percent_complete,
+        Status=imported_project.status,
+        Priority=imported_project.priority,
+        Notes=imported_project.notes,
+        SourceFileName=imported_project.source_file_name,
+    )
+    db.add(project)
+    db.flush()
+
+    next_task_uid = get_next_task_uid(db)
+    for imported_task in imported_project.tasks:
+        db.add(
+            models.Task(
+                TaskUID=next_task_uid,
+                ProjectUID=project_uid,
+                TaskName=imported_task.name,
+                OutlineLevel=imported_task.outline_level,
+                OutlineNumber=imported_task.outline_number,
+                WBS=imported_task.wbs,
+                IsSummary=imported_task.is_summary,
+                Predecessors=imported_task.predecessors,
+                ResourceNames=imported_task.resource_names,
+                Start=imported_task.start,
+                Finish=imported_task.finish,
+                DurationDays=imported_task.duration_days,
+                PercentComplete=imported_task.percent_complete,
+                Status=imported_task.status,
+                IsMilestone=imported_task.is_milestone,
+                Notes=imported_task.notes,
+            )
+        )
+        next_task_uid += 1
+
+    sync_project_metrics(db, project)
+    commit_with_rollback(
+        db,
+        "Failed to import Microsoft Project XML.",
+        source_file_name=imported_project.source_file_name,
+    )
+    db.refresh(project)
+    logger.info(
+        "Imported project from Microsoft Project XML.",
+        extra={"projectUID": project.ProjectUID, "sourceFileName": imported_project.source_file_name},
+    )
+    return serialize_project(get_project(db, project.ProjectUID))
 
 
 def get_project(db: Session, project_id: int) -> models.Project | None:
@@ -249,3 +374,29 @@ def get_managers(db: Session) -> list[schemas.ManagerRead]:
     managers = db.scalars(select(models.Manager).order_by(models.Manager.display_name)).all()
     logger.info("Loaded managers.", extra={"managerCount": len(managers)})
     return [serialize_manager(manager) for manager in managers]
+
+
+def parse_log_level(line: str) -> str:
+    upper_line = line.upper()
+    for level in ("ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"):
+        if f" {level} " in upper_line or upper_line.startswith(level):
+            return level
+    return "OTHER"
+
+
+def read_log_file(log_file_path: str | None, max_lines: int = 400) -> schemas.LogFileRead:
+    if not log_file_path:
+        return schemas.LogFileRead(filePath=None, lines=[])
+
+    path = Path(log_file_path)
+    if not path.exists():
+        return schemas.LogFileRead(filePath=str(path), lines=[])
+
+    content = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    tail = content[-max_lines:]
+    starting_line = max(1, len(content) - len(tail) + 1)
+    lines = [
+        schemas.LogLineRead(lineNumber=starting_line + index, level=parse_log_level(line), content=line)
+        for index, line in enumerate(tail)
+    ]
+    return schemas.LogFileRead(filePath=str(path), lines=lines)

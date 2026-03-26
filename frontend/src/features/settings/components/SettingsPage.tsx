@@ -1,6 +1,9 @@
-﻿import { Col, Container, Row, Spinner } from 'react-bootstrap';
+import { Col, Container, Row, Spinner } from 'react-bootstrap';
+import { LogViewerPanel } from './LogViewerPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { useThemeSettings } from '../theme/ThemeProvider';
+
+const ADMIN_USER_NAME = 'Ava Patel';
 
 export function SettingsPage() {
     const { settings, isLoading } = useThemeSettings();
@@ -32,6 +35,11 @@ export function SettingsPage() {
                 <Col xl={8}>
                     <SettingsPanel />
                 </Col>
+                {settings?.currentUserName === ADMIN_USER_NAME ? (
+                    <Col xl={12}>
+                        <LogViewerPanel currentUserName={settings.currentUserName} />
+                    </Col>
+                ) : null}
             </Row>
         </Container>
     );

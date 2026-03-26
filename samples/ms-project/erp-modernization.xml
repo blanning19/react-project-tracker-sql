@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>ERP Modernization Import Sample</Name>
+  <Title>ERP Modernization Import Sample</Title>
+  <Author>Ava Patel</Author>
+  <StartDate>2026-03-02T08:00:00</StartDate>
+  <FinishDate>2026-04-24T17:00:00</FinishDate>
+  <Priority>700</Priority>
+  <Comments>Imported sample for ERP migration planning.</Comments>
+  <Tasks>
+    <Task>
+      <UID>1</UID>
+      <Name>ERP Modernization Import Sample</Name>
+      <Summary>1</Summary>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-04-24T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>10</UID>
+      <Name>Requirements baseline</Name>
+      <Start>2026-03-02T08:00:00</Start>
+      <Finish>2026-03-06T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>100</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Validate scope, owners, and migration assumptions.</Notes>
+    </Task>
+    <Task>
+      <UID>20</UID>
+      <Name>Data mapping workshop</Name>
+      <Start>2026-03-09T08:00:00</Start>
+      <Finish>2026-03-18T17:00:00</Finish>
+      <Duration>PT64H0M0S</Duration>
+      <PercentComplete>60</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Cross-functional workshop for source-to-target mapping.</Notes>
+    </Task>
+    <Task>
+      <UID>30</UID>
+      <Name>Cutover readiness review</Name>
+      <Start>2026-04-24T09:00:00</Start>
+      <Finish>2026-04-24T17:00:00</Finish>
+      <Duration>PT8H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>1</Milestone>
+      <Notes>Final go-live checkpoint.</Notes>
+    </Task>
+  </Tasks>
+  <Resources>
+    <Resource>
+      <UID>1</UID>
+      <Name>Ava Patel</Name>
+    </Resource>
+    <Resource>
+      <UID>2</UID>
+      <Name>Sam Rivera</Name>
+    </Resource>
+    <Resource>
+      <UID>3</UID>
+      <Name>Taylor Brooks</Name>
+    </Resource>
+  </Resources>
+  <Assignments>
+    <Assignment>
+      <TaskUID>10</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>20</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>20</TaskUID>
+      <ResourceUID>2</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>30</TaskUID>
+      <ResourceUID>3</ResourceUID>
+    </Assignment>
+  </Assignments>
+</Project>

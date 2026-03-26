@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { formatDate } from '../../../shared/utils/date';
@@ -65,12 +65,19 @@ export function MyDashboardPage() {
             <Row className="g-4 align-items-stretch mb-4">
                 <Col xl={12}>
                     <div className="hero-panel rounded-4 shadow-sm h-100 p-4 p-lg-5">
-                        <p className="text-uppercase small mb-2 hero-kicker">My Dashboard</p>
-                        <h1 className="display-6 fw-semibold mb-2">My projects and open work.</h1>
-                        <p className="mb-0 text-body-secondary">
-                            This view is split into a project list and a task list so you can jump directly into the
-                            right level of work for {currentUserName}.
-                        </p>
+                        <div className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
+                            <div>
+                                <p className="text-uppercase small mb-2 hero-kicker">My Work</p>
+                                <h1 className="display-6 fw-semibold mb-2">Active projects and assigned tasks.</h1>
+                                <p className="mb-0 text-body-secondary">
+                                    This view shows the projects you own and the open tasks assigned to you, so you
+                                    can jump straight into your active work for {currentUserName}.
+                                </p>
+                            </div>
+                            <Link to="/projects/new" className="btn btn-primary">
+                                Create or Import Project
+                            </Link>
+                        </div>
                     </div>
                 </Col>
             </Row>
@@ -165,14 +172,12 @@ export function MyDashboardPage() {
                                             }
                                         </td>
                                         <td className="text-end">
-                                            <Button
-                                                as={Link}
+                                            <Link
                                                 to={`/projects/${project.ProjectUID}?from=my-dashboard`}
-                                                variant="outline-primary"
-                                                size="sm"
+                                                className="btn btn-outline-primary btn-sm"
                                             >
                                                 Open Project
-                                            </Button>
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))}
@@ -231,14 +236,12 @@ export function MyDashboardPage() {
                                         <td>{task.PercentComplete}%</td>
                                         <td>{isOwner ? 'Owner' : 'Assigned'}</td>
                                         <td className="text-end">
-                                            <Button
-                                                as={Link}
+                                            <Link
                                                 to={`/projects/${project.ProjectUID}?from=my-dashboard&taskId=${task.TaskUID}`}
-                                                variant="outline-primary"
-                                                size="sm"
+                                                className="btn btn-outline-primary btn-sm"
                                             >
                                                 Open Task
-                                            </Button>
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))}

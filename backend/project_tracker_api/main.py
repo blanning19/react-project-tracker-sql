@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from . import crud, schemas
 from .config import get_settings
-from .database import Base, engine, get_db
+from .database import Base, engine, ensure_legacy_schema_columns, get_db
 from .logging_config import configure_logging
+from .ms_project_import import parse_project_xml
 
 settings = get_settings()
 configure_logging(settings.log_level, settings.log_file_path)
@@ -28,6 +29,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_legacy_schema_columns()
     logger.info("Project Tracker API started.")
 
 
@@ -57,6 +59,24 @@ def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)
         logger.warning("Rejected duplicate project create.", extra={"projectUID": payload.ProjectUID})
         raise HTTPException(status_code=409, detail="ProjectUID already exists.")
     return crud.create_project(db, payload)
+
+
+@app.post("/api/projects/import", response_model=schemas.ProjectRead, status_code=status.HTTP_201_CREATED)
+async def import_project(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    file_name = file.filename or "imported-project.xml"
+    if not file_name.lower().endswith(".xml"):
+        raise HTTPException(status_code=400, detail="Upload a Microsoft Project XML export (.xml).")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+
+    try:
+        imported_project = parse_project_xml(file_bytes, file_name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return crud.import_project(db, imported_project)
 
 
 @app.put("/api/projects/{project_id}", response_model=schemas.ProjectRead)
@@ -143,3 +163,11 @@ def list_team_members(db: Session = Depends(get_db)):
 @app.get("/api/managers", response_model=list[schemas.ManagerRead])
 def list_managers(db: Session = Depends(get_db)):
     return crud.get_managers(db)
+
+
+@app.get("/api/logs/current", response_model=schemas.LogFileRead)
+def get_current_log(user_name: str):
+    if user_name.strip().lower() != settings.admin_user_name.strip().lower():
+        logger.warning("Rejected log view request for non-admin user.", extra={"userName": user_name})
+        raise HTTPException(status_code=403, detail="You are not allowed to view the application log.")
+    return crud.read_log_file(settings.log_file_path)

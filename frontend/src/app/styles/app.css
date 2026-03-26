@@ -67,6 +67,26 @@ body {
     backdrop-filter: none;
 }
 
+.project-detail-tabs {
+    border-bottom: none;
+    gap: 0.35rem;
+}
+
+.project-detail-tabs .nav-link {
+    border: 1px solid var(--app-border);
+    border-bottom: 1px solid var(--app-border);
+    border-radius: 999px;
+    color: var(--bs-body-color);
+    font-weight: 600;
+    background: transparent;
+}
+
+.project-detail-tabs .nav-link.active {
+    background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+    color: var(--app-accent);
+    border-color: color-mix(in srgb, var(--app-accent) 28%, transparent);
+}
+
 .sidebar-link {
     display: block;
     padding: 0.9rem 1rem;
@@ -192,6 +212,178 @@ body {
     white-space: nowrap;
 }
 
+.dependency-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 28%, transparent);
+    color: var(--bs-body-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    flex-wrap: wrap;
+}
+
+.dependency-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: stretch;
+}
+
+.dependency-node {
+    border: 1px solid var(--app-border);
+    border-radius: 1rem;
+    padding: 1rem;
+    background: color-mix(in srgb, var(--app-panel-solid) 92%, white 8%);
+}
+
+[data-bs-theme='dark'] .dependency-node {
+    background: color-mix(in srgb, var(--app-panel-solid) 92%, black 8%);
+}
+
+.dependency-node-source {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
+.dependency-arrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--app-accent);
+    text-align: left;
+}
+
+.dependency-pill-code {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--app-accent) 18%, white 12%);
+    font-weight: 700;
+}
+
+.dependency-pill-name {
+    color: var(--bs-body-color);
+    font-weight: 500;
+}
+
+.dependency-target-item {
+    display: flex;
+    align-items: center;
+}
+
+.gantt-shell {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.gantt-header,
+.gantt-row {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.6fr);
+    gap: 1rem;
+    align-items: center;
+}
+
+.gantt-label-col {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--bs-secondary-color);
+    text-transform: uppercase;
+}
+
+.gantt-timeline-col,
+.gantt-track {
+    position: relative;
+    min-height: 2.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--app-panel-solid) 92%, white 8%);
+}
+
+[data-bs-theme='dark'] .gantt-timeline-col,
+[data-bs-theme='dark'] .gantt-track {
+    background: color-mix(in srgb, var(--app-panel-solid) 90%, black 10%);
+}
+
+.gantt-tick,
+.gantt-grid-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
+.gantt-tick {
+    width: 0;
+    border-left: 1px dashed color-mix(in srgb, var(--app-accent) 35%, transparent);
+}
+
+.gantt-tick span {
+    position: absolute;
+    top: 0.45rem;
+    left: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+
+.gantt-grid-line {
+    width: 0;
+    border-left: 1px dashed color-mix(in srgb, var(--app-accent) 14%, transparent);
+}
+
+.gantt-label {
+    min-width: 0;
+    font-weight: 500;
+}
+
+.gantt-label-summary {
+    font-weight: 700;
+}
+
+.gantt-wbs {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.gantt-bar {
+    position: absolute;
+    top: 50%;
+    height: 0.8rem;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--app-accent), color-mix(in srgb, var(--app-accent) 55%, white 18%));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 25%, transparent);
+}
+
+.gantt-bar-summary {
+    height: 1rem;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25);
+}
+
+.gantt-milestone {
+    position: absolute;
+    top: 50%;
+    width: 1rem;
+    height: 1rem;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-radius: 0.15rem;
+    background: linear-gradient(135deg, #06b6d4, #38bdf8);
+    box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.25);
+}
+
 @media (max-width: 991px) {
     .app-shell-grid {
         grid-template-columns: 1fr;
@@ -215,5 +407,18 @@ body {
 
     .ticker-move {
         animation-duration: 18s;
+    }
+
+    .dependency-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dependency-arrow {
+        text-align: left;
+    }
+
+    .gantt-header,
+    .gantt-row {
+        grid-template-columns: 1fr;
     }
 }

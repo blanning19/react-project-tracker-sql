@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>Client Portal Rollout Import Sample</Name>
+  <Title>Client Portal Rollout Import Sample</Title>
+  <Author>Jordan Lee</Author>
+  <StartDate>2026-04-06T08:00:00</StartDate>
+  <FinishDate>2026-05-08T17:00:00</FinishDate>
+  <Priority>500</Priority>
+  <Comments>Imported sample for a client-facing release.</Comments>
+  <Tasks>
+    <Task>
+      <UID>1</UID>
+      <Name>Client Portal Rollout Import Sample</Name>
+      <Summary>1</Summary>
+      <Start>2026-04-06T08:00:00</Start>
+      <Finish>2026-05-08T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>10</UID>
+      <Name>UX signoff</Name>
+      <Start>2026-04-06T08:00:00</Start>
+      <Finish>2026-04-10T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>100</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Final stakeholder approval on release visuals.</Notes>
+    </Task>
+    <Task>
+      <UID>20</UID>
+      <Name>Content migration</Name>
+      <Start>2026-04-13T08:00:00</Start>
+      <Finish>2026-04-24T17:00:00</Finish>
+      <Duration>PT80H0M0S</Duration>
+      <PercentComplete>35</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Move and validate help center and landing page content.</Notes>
+    </Task>
+    <Task>
+      <UID>30</UID>
+      <Name>Production launch</Name>
+      <Start>2026-05-08T09:00:00</Start>
+      <Finish>2026-05-08T17:00:00</Finish>
+      <Duration>PT8H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>1</Milestone>
+      <Notes>Final launch window.</Notes>
+    </Task>
+  </Tasks>
+  <Resources>
+    <Resource>
+      <UID>1</UID>
+      <Name>Jordan Lee</Name>
+    </Resource>
+    <Resource>
+      <UID>2</UID>
+      <Name>Morgan Chen</Name>
+    </Resource>
+    <Resource>
+      <UID>3</UID>
+      <Name>Riley Stone</Name>
+    </Resource>
+  </Resources>
+  <Assignments>
+    <Assignment>
+      <TaskUID>10</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>20</TaskUID>
+      <ResourceUID>2</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>20</TaskUID>
+      <ResourceUID>3</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>30</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+  </Assignments>
+</Project>

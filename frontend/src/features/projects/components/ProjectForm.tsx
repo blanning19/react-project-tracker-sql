@@ -6,6 +6,7 @@ import { ManagerRecord, ProjectPayload, ProjectRecord } from '../../../shared/ty
 interface ProjectFormProps {
     project?: ProjectRecord | null;
     onSave: (payload: ProjectPayload, projectId?: number) => Promise<void>;
+    onImport?: (file: File) => Promise<void>;
     onClear: () => void;
     showCreateAction?: boolean;
     footerActions?: ReactNode;
@@ -16,6 +17,7 @@ const createEmptyProject = (): ProjectPayload => ({
     ProjectUID: 0,
     ProjectName: '',
     ProjectManager: '',
+    CalendarName: '',
     Start: new Date().toISOString().slice(0, 10),
     Finish: new Date().toISOString().slice(0, 10),
     DurationDays: 1,
@@ -31,6 +33,7 @@ function toEditableProject(project: ProjectRecord): ProjectPayload {
         ProjectUID: project.ProjectUID,
         ProjectName: project.ProjectName,
         ProjectManager: project.ProjectManager,
+        CalendarName: project.CalendarName,
         Start: project.Start,
         Finish: project.Finish,
         DurationDays: project.DurationDays,
@@ -57,6 +60,7 @@ function calculateDurationDays(start: string, finish: string): number {
 export function ProjectForm({
     project,
     onSave,
+    onImport,
     onClear,
     showCreateAction = true,
     footerActions,
@@ -64,12 +68,15 @@ export function ProjectForm({
 }: ProjectFormProps) {
     const [formState, setFormState] = useState<ProjectPayload>(createEmptyProject());
     const [managers, setManagers] = useState<ManagerRecord[]>([]);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [isImporting, setIsImporting] = useState(false);
 
     useEffect(() => {
         if (project) {
             setFormState(toEditableProject(project));
         } else {
             setFormState(createEmptyProject());
+            setImportFile(null);
         }
     }, [project]);
 
@@ -109,7 +116,22 @@ export function ProjectForm({
         }
 
         setFormState(createEmptyProject());
+        setImportFile(null);
         onClear();
+    }
+
+    async function handleImport() {
+        if (!importFile || !onImport) {
+            return;
+        }
+
+        setIsImporting(true);
+        try {
+            await onImport(importFile);
+            setImportFile(null);
+        } finally {
+            setIsImporting(false);
+        }
     }
 
     return (
@@ -128,6 +150,37 @@ export function ProjectForm({
                 </div>
                 <Form onSubmit={handleSubmit}>
                     <Row className="g-3">
+                        {!project && !readOnly && onImport ? (
+                            <Col md={12}>
+                                <Form.Group>
+                                    <Form.Label className="fw-semibold">Import Microsoft Project XML</Form.Label>
+                                    <Form.Control
+                                        type="file"
+                                        accept=".xml"
+                                        onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+                                    />
+                                    <Form.Text className="text-body-secondary">
+                                        Upload a Microsoft Project XML export to create the project, tasks, managers,
+                                        and team members automatically.
+                                    </Form.Text>
+                                    {importFile ? (
+                                        <div className="small text-body-secondary mt-2">
+                                            Selected file: <strong>{importFile.name}</strong>
+                                        </div>
+                                    ) : null}
+                                    <div className="d-flex gap-2 mt-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline-primary"
+                                            onClick={() => void handleImport()}
+                                            disabled={!importFile || isImporting}
+                                        >
+                                            {isImporting ? 'Importing...' : 'Import From XML'}
+                                        </Button>
+                                    </div>
+                                </Form.Group>
+                            </Col>
+                        ) : null}
                         <Col md={12}>
                             <Form.Group>
                                 <Form.Label className="fw-semibold">SourceFileName</Form.Label>
@@ -188,6 +241,16 @@ export function ProjectForm({
                                         <option>Low</option>
                                     </Form.Select>
                                 )}
+                            </Form.Group>
+                        </Col>
+                        <Col md={12}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Calendar</Form.Label>
+                                <Form.Control
+                                    value={formState.CalendarName || 'No calendar metadata'}
+                                    readOnly
+                                    disabled={readOnly}
+                                />
                             </Form.Group>
                         </Col>
                         <Col md={4}>

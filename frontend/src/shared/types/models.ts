@@ -19,10 +19,26 @@ export interface ManagerRecord {
     displayName: string;
 }
 
+export interface LogLineRecord {
+    lineNumber: number;
+    level: string;
+    content: string;
+}
+
+export interface LogFileRecord {
+    filePath: string | null;
+    lines: LogLineRecord[];
+}
+
 export interface TaskRecord {
     TaskUID: number;
     ProjectUID: number;
     TaskName: string;
+    OutlineLevel: number;
+    OutlineNumber: string;
+    WBS: string;
+    IsSummary: boolean;
+    Predecessors: string;
     ResourceNames: string;
     Start: string;
     Finish: string;
@@ -38,6 +54,8 @@ export interface ProjectRecord {
     ProjectUID: number;
     ProjectName: string;
     ProjectManager: string;
+    CreatedDate: string;
+    CalendarName: string;
     Start: string;
     Finish: string;
     DurationDays: number;
@@ -50,5 +68,5 @@ export interface ProjectRecord {
     tasks: TaskRecord[];
 }
 
-export type ProjectPayload = Omit<ProjectRecord, 'tasks' | 'IsOverdue'>;
+export type ProjectPayload = Omit<ProjectRecord, 'tasks' | 'IsOverdue' | 'CreatedDate'>;
 export type TaskPayload = Omit<TaskRecord, 'IsOverdue'>;

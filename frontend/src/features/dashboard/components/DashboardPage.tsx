@@ -340,10 +340,37 @@ export function DashboardPage() {
                                                 {project.tasks.map((task) => (
                                                     <tr key={task.TaskUID}>
                                                         <td>
-                                                            <div className="fw-semibold">{task.TaskName}</div>
+                                                            <div
+                                                                className={task.IsSummary ? 'fw-semibold' : ''}
+                                                                style={{
+                                                                    paddingLeft: `${Math.max(0, task.OutlineLevel - 1) * 1.25}rem`,
+                                                                }}
+                                                            >
+                                                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                                    {task.WBS ? (
+                                                                        <small className="text-body-secondary">
+                                                                            {task.WBS}
+                                                                        </small>
+                                                                    ) : null}
+                                                                    <span>{task.TaskName}</span>
+                                                                    {task.IsSummary ? (
+                                                                        <Badge bg="warning" text="dark">
+                                                                            Phase
+                                                                        </Badge>
+                                                                    ) : null}
+                                                                    {task.IsMilestone && !task.IsSummary ? (
+                                                                        <Badge bg="info">Milestone</Badge>
+                                                                    ) : null}
+                                                                </div>
+                                                            </div>
                                                             <small className="text-body-secondary">
                                                                 TaskUID {task.TaskUID}
                                                             </small>
+                                                            {task.Predecessors ? (
+                                                                <small className="d-block text-body-secondary">
+                                                                    Depends on: {task.Predecessors}
+                                                                </small>
+                                                            ) : null}
                                                         </td>
                                                         <td>
                                                             <Badge bg={getStatusClass(task.Status, task.IsOverdue)}>

@@ -1,22 +1,58 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Col, Container, Pagination, Row, Spinner } from 'react-bootstrap';
+import { Button, Col, Container, Pagination, Row, Spinner } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import { LiveClock } from '../../dashboard/components/LiveClock';
-import { ProjectSummaryTable } from './ProjectSummaryTable';
+import { HomeProjectSortField, ProjectSummaryTable } from './ProjectSummaryTable';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { useProjectData } from '../../dashboard/hooks/useProjectData';
+import { SortDirection } from '../../../shared/types/models';
 
 const PROJECTS_PER_PAGE = 10;
 
 export function HomePage() {
     const { settings, isLoading: isSettingsLoading } = useThemeSettings();
-    const { projects, isLoading } = useProjectData(settings);
+    const { projects, isLoading, error } = useProjectData(settings);
     const [currentPage, setCurrentPage] = useState(1);
+    const [sortField, setSortField] = useState<HomeProjectSortField>('Finish');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
-    const totalPages = Math.max(1, Math.ceil(projects.length / PROJECTS_PER_PAGE));
+    const sortedProjects = useMemo(() => {
+        return [...projects].sort((left, right) => {
+            const directionMultiplier = sortDirection === 'asc' ? 1 : -1;
+
+            if (sortField === 'OpenTasks') {
+                const leftValue = left.tasks.filter((task) => task.Status.toLowerCase() !== 'completed').length;
+                const rightValue = right.tasks.filter((task) => task.Status.toLowerCase() !== 'completed').length;
+                return (leftValue - rightValue) * directionMultiplier;
+            }
+
+            const leftValue = left[sortField];
+            const rightValue = right[sortField];
+
+            if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+                return (leftValue - rightValue) * directionMultiplier;
+            }
+
+            return String(leftValue).localeCompare(String(rightValue)) * directionMultiplier;
+        });
+    }, [projects, sortDirection, sortField]);
+
+    const totalPages = Math.max(1, Math.ceil(sortedProjects.length / PROJECTS_PER_PAGE));
     const pagedProjects = useMemo(() => {
         const startIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
-        return projects.slice(startIndex, startIndex + PROJECTS_PER_PAGE);
-    }, [currentPage, projects]);
+        return sortedProjects.slice(startIndex, startIndex + PROJECTS_PER_PAGE);
+    }, [currentPage, sortedProjects]);
+
+    function handleSort(field: HomeProjectSortField) {
+        setCurrentPage(1);
+        if (field === sortField) {
+            setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+            return;
+        }
+
+        setSortField(field);
+        setSortDirection(field === 'ProjectName' || field === 'ProjectManager' || field === 'Status' ? 'asc' : 'desc');
+    }
 
     useEffect(() => {
         setCurrentPage((page) => Math.min(page, totalPages));
@@ -39,29 +75,50 @@ export function HomePage() {
                             <div>
                                 <p className="text-uppercase small mb-2 hero-kicker">Home</p>
                                 <h1 className="display-6 fw-semibold mb-2">
-                                    All projects across the portfolio in one place.
+                                    All projects
                                 </h1>
                                 <p className="mb-0 text-body-secondary">
-                                    This is the default landing page for the workspace. It shows the complete project
-                                    list plus live portfolio activity.
+                                    This is the default landing page for the workspace. It shows the complete project list and status.
                                 </p>
                             </div>
-                            <LiveClock />
+                            <div className="d-flex flex-column align-items-lg-end gap-3">
+                                <LiveClock />
+                                <Button as={Link} to="/projects/new">
+                                    Create or Import Project
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </Col>
             </Row>
 
             <div className="mt-4">
+                {error ? (
+                    <div className="mb-4">
+                        <ProjectSummaryTable
+                            projects={[]}
+                            title="All Projects"
+                            subtitle="Project data could not be loaded."
+                            sortField={sortField}
+                            sortDirection={sortDirection}
+                            onSort={handleSort}
+                        />
+                        <div className="alert alert-danger mt-3 mb-0" role="alert">
+                            {error}
+                        </div>
+                    </div>
+                ) : null}
                 <ProjectSummaryTable
-                    projects={pagedProjects}
-                    currentUserName={settings?.currentUserName ?? 'Ava Patel'}
+                    projects={error ? [] : pagedProjects}
                     title="All Projects"
-                    subtitle={`Showing ${pagedProjects.length} of ${projects.length} projects. Page ${currentPage} of ${totalPages}.`}
+                    subtitle={`Showing ${pagedProjects.length} of ${sortedProjects.length} projects. Page ${currentPage} of ${totalPages}.`}
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
                     actionLabel="Open Project"
                     actionHref={(project) => `/projects/${project.ProjectUID}?from=home`}
                 />
-                {projects.length > PROJECTS_PER_PAGE ? (
+                {sortedProjects.length > PROJECTS_PER_PAGE ? (
                     <div className="d-flex justify-content-center mt-4">
                         <Pagination className="mb-0">
                             <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />

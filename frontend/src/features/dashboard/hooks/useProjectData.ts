@@ -64,6 +64,30 @@ export function useProjectData(settings: UserSettings | null) {
         }
     }
 
+    async function handleProjectImport(file: File) {
+        setIsSaving(true);
+        setError(null);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const importedProject = await apiFetch<ProjectRecord>('/projects/import', {
+                method: 'POST',
+                body: formData,
+            });
+            setEditingProject(null);
+            setEditingTask(null);
+            await loadProjects();
+            setSelectedProjectId(importedProject.ProjectUID);
+            return importedProject;
+        } catch (saveError) {
+            const message = saveError instanceof Error ? saveError.message : 'Unable to import the project file.';
+            setError(message);
+            throw saveError;
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     async function handleTaskSave(payload: TaskPayload, taskId?: number) {
         setIsSaving(true);
         setError(null);
@@ -126,6 +150,7 @@ export function useProjectData(settings: UserSettings | null) {
         error,
         isSaving,
         handleProjectSave,
+        handleProjectImport,
         handleTaskSave,
         handleDeleteProject,
         handleDeleteTask,

@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>Advanced Product Launch</Name>
+  <Title>Advanced Product Launch</Title>
+  <Author>Jordan Lee</Author>
+  <StartDate>2026-05-04T08:00:00</StartDate>
+  <FinishDate>2026-06-19T17:00:00</FinishDate>
+  <Priority>700</Priority>
+  <CalendarUID>1</CalendarUID>
+  <Comments>Advanced sample with WBS, summary phases, milestones, dependencies, resources, and notes.</Comments>
+  <Calendars>
+    <Calendar>
+      <UID>1</UID>
+      <Name>Standard</Name>
+    </Calendar>
+  </Calendars>
+  <Tasks>
+    <Task>
+      <UID>1</UID>
+      <ID>1</ID>
+      <Name>Advanced Product Launch</Name>
+      <Summary>1</Summary>
+      <WBS>1</WBS>
+      <OutlineNumber>1</OutlineNumber>
+      <OutlineLevel>1</OutlineLevel>
+      <Start>2026-05-04T08:00:00</Start>
+      <Finish>2026-06-19T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>100</UID>
+      <ID>2</ID>
+      <Name>Discovery and planning</Name>
+      <Summary>1</Summary>
+      <WBS>1.1</WBS>
+      <OutlineNumber>1.1</OutlineNumber>
+      <OutlineLevel>2</OutlineLevel>
+      <Start>2026-05-04T08:00:00</Start>
+      <Finish>2026-05-15T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>110</UID>
+      <ID>3</ID>
+      <Name>Requirements signoff</Name>
+      <WBS>1.1.1</WBS>
+      <OutlineNumber>1.1.1</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-05-04T08:00:00</Start>
+      <Finish>2026-05-08T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>100</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Business and support teams approve the launch scope.</Notes>
+    </Task>
+    <Task>
+      <UID>120</UID>
+      <ID>4</ID>
+      <Name>Release architecture review</Name>
+      <WBS>1.1.2</WBS>
+      <OutlineNumber>1.1.2</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-05-11T08:00:00</Start>
+      <Finish>2026-05-15T17:00:00</Finish>
+      <Duration>PT40H0M0S</Duration>
+      <PercentComplete>100</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Validate app topology, rollout strategy, and support model.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>110</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>200</UID>
+      <ID>5</ID>
+      <Name>Build and validation</Name>
+      <Summary>1</Summary>
+      <WBS>1.2</WBS>
+      <OutlineNumber>1.2</OutlineNumber>
+      <OutlineLevel>2</OutlineLevel>
+      <Start>2026-05-18T08:00:00</Start>
+      <Finish>2026-06-12T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>210</UID>
+      <ID>6</ID>
+      <Name>Feature completion</Name>
+      <WBS>1.2.1</WBS>
+      <OutlineNumber>1.2.1</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-05-18T08:00:00</Start>
+      <Finish>2026-05-29T17:00:00</Finish>
+      <Duration>PT80H0M0S</Duration>
+      <PercentComplete>65</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Close remaining feature gaps before UAT.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>120</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>220</UID>
+      <ID>7</ID>
+      <Name>UAT complete</Name>
+      <WBS>1.2.2</WBS>
+      <OutlineNumber>1.2.2</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-01T08:00:00</Start>
+      <Finish>2026-06-12T17:00:00</Finish>
+      <Duration>PT80H0M0S</Duration>
+      <PercentComplete>25</PercentComplete>
+      <Milestone>0</Milestone>
+      <Notes>Track readiness issues and final signoff defects.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>210</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>300</UID>
+      <ID>8</ID>
+      <Name>Go-live</Name>
+      <Summary>1</Summary>
+      <WBS>1.3</WBS>
+      <OutlineNumber>1.3</OutlineNumber>
+      <OutlineLevel>2</OutlineLevel>
+      <Start>2026-06-15T08:00:00</Start>
+      <Finish>2026-06-19T17:00:00</Finish>
+    </Task>
+    <Task>
+      <UID>310</UID>
+      <ID>9</ID>
+      <Name>Launch readiness checkpoint</Name>
+      <WBS>1.3.1</WBS>
+      <OutlineNumber>1.3.1</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-15T09:00:00</Start>
+      <Finish>2026-06-15T17:00:00</Finish>
+      <Duration>PT8H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>1</Milestone>
+      <Notes>Formal launch go/no-go meeting.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>220</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+    <Task>
+      <UID>320</UID>
+      <ID>10</ID>
+      <Name>Production release</Name>
+      <WBS>1.3.2</WBS>
+      <OutlineNumber>1.3.2</OutlineNumber>
+      <OutlineLevel>3</OutlineLevel>
+      <Start>2026-06-19T09:00:00</Start>
+      <Finish>2026-06-19T17:00:00</Finish>
+      <Duration>PT8H0M0S</Duration>
+      <PercentComplete>0</PercentComplete>
+      <Milestone>1</Milestone>
+      <Notes>Customer-facing launch event and deployment window.</Notes>
+      <PredecessorLink>
+        <PredecessorUID>310</PredecessorUID>
+        <Type>1</Type>
+      </PredecessorLink>
+    </Task>
+  </Tasks>
+  <Resources>
+    <Resource>
+      <UID>1</UID>
+      <Name>Jordan Lee</Name>
+    </Resource>
+    <Resource>
+      <UID>2</UID>
+      <Name>Morgan Chen</Name>
+    </Resource>
+    <Resource>
+      <UID>3</UID>
+      <Name>Riley Stone</Name>
+    </Resource>
+    <Resource>
+      <UID>4</UID>
+      <Name>Priya Shah</Name>
+    </Resource>
+  </Resources>
+  <Assignments>
+    <Assignment>
+      <TaskUID>110</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>120</TaskUID>
+      <ResourceUID>4</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>210</TaskUID>
+      <ResourceUID>2</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>220</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>220</TaskUID>
+      <ResourceUID>3</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>310</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>320</TaskUID>
+      <ResourceUID>1</ResourceUID>
+    </Assignment>
+    <Assignment>
+      <TaskUID>320</TaskUID>
+      <ResourceUID>4</ResourceUID>
+    </Assignment>
+  </Assignments>
+</Project>

@@ -40,6 +40,7 @@ react-project-tracker-sql/
 - Pydantic Settings
 - PostgreSQL
 - Psycopg
+- Microsoft Project XML import endpoint
 - Python virtual environment in `backend/.venv`
 - Ruff configuration in `backend/pyproject.toml`
 
@@ -119,6 +120,48 @@ Example areas:
 - My Dashboard filters projects and tasks based on the current user
 - Project Detail handles project view/edit state and task edit state
 - Theme settings are loaded and persisted through the settings API
+- Project import accepts Microsoft Project XML and creates a project plus related task and people records
+
+## Microsoft Project Import
+
+New projects can be created from the app at `/projects/new`.
+
+Import behavior:
+
+- upload a Microsoft Project XML export file from the create-project page
+- the backend parses project, task, resource, and assignment data
+- the app creates one new project record and one task record per imported task, including summary phase rows
+- new manager names are added to the `managers` table
+- new assigned resource names are added to the `team_members` table
+- the uploaded file name is stored in `SourceFileName`
+
+Currently displayed from advanced XML task structure:
+
+- WBS values
+- outline-based hierarchy indentation
+- summary phases shown as task rows
+
+Important note:
+
+- the importer currently supports Microsoft Project XML exports (`.xml`)
+- binary native `.mpp` parsing is not implemented in this repo
+
+Sample files for testing are included in:
+
+```text
+samples/ms-project/
+```
+
+Current sample mix:
+
+- `simple-website-refresh.xml` for a minimal import path
+- `advanced-product-launch.xml` for WBS, summary phases, milestones, dependencies, resources, and notes
+- `advanced-infrastructure-program.xml` for a larger roadmap-style structure with the same advanced features
+
+XML note:
+
+- these XML files are example Microsoft Project XML documents, not extracted binary `.mpp` payloads
+- Microsoft Project can export and re-open this XML interchange format, which makes it a practical upload target for the app
 
 ## Repository Structure
 
@@ -210,6 +253,7 @@ Then set at least:
 
 - `PROJECT_TRACKER_DATABASE_URL`
 - optional CORS overrides if needed
+- optional `PROJECT_TRACKER_ADMIN_USER_NAME` if you want a different account to see the log viewer in Settings
 
 ### 4. Seed Local Development Data
 
@@ -261,6 +305,27 @@ npm run lint
 npm run format
 ```
 
+### What These Commands Do
+
+- `npm run frontend:install` installs frontend dependencies into `frontend/node_modules`
+- `npm run frontend:dev` starts the Vite development server for the React app
+- `npm run frontend:build` creates a production frontend build and catches build-time issues
+- `npm run frontend:lint` runs ESLint on the frontend code
+- `npm run backend:venv` creates the Python virtual environment in `backend/.venv`
+- `npm run backend:install` installs the backend package and dev tools into `backend/.venv`
+- `npm run backend:seed` rebuilds the local schema and inserts sample data
+- `npm run backend:dev` starts the FastAPI backend with reload enabled
+- `npm run backend:lint` runs Ruff lint checks on the backend Python code
+- `npm run backend:format:check` checks whether backend Python files match Ruff formatting rules without rewriting files
+- `npm run backend:format` rewrites backend Python files to match Ruff formatting rules
+- `npm run check` runs the main pre-commit validation flow for the repo
+
+Formatting note:
+
+- use `npm run backend:format:check` when you want to verify formatting
+- use `npm run backend:format` when you want Ruff to fix formatting for you
+- `npm run check` includes `backend:format:check`, so it will fail if backend files need formatting
+
 ## Validation Workflow
 
 After larger changes, run these checks from the repo root:
@@ -308,6 +373,15 @@ The next recommended additions are:
 - Frontend: `http://127.0.0.1:5173`
 - Backend health: `http://127.0.0.1:8000/health`
 - API base default: `http://127.0.0.1:8000/api`
+- Create/import page: `http://127.0.0.1:5173/projects/new`
+
+## Log Viewer
+
+The Settings page includes a current-log viewer for the admin account only.
+
+- the backend reads the current file configured by `PROJECT_TRACKER_LOG_FILE_PATH`
+- access is allowed only when the current user name matches `PROJECT_TRACKER_ADMIN_USER_NAME`
+- warning and error lines are highlighted in the UI for faster scanning
 
 ## Styling Notes
 

@@ -16,6 +16,11 @@ const createEmptyTask = (projectId?: number): TaskPayload => ({
     TaskUID: 0,
     ProjectUID: projectId ?? 0,
     TaskName: '',
+    OutlineLevel: 1,
+    OutlineNumber: '',
+    WBS: '',
+    IsSummary: false,
+    Predecessors: '',
     ResourceNames: '',
     Start: new Date().toISOString().slice(0, 10),
     Finish: new Date().toISOString().slice(0, 10),
@@ -31,6 +36,11 @@ function toEditableTask(task: TaskRecord): TaskPayload {
         TaskUID: task.TaskUID,
         ProjectUID: task.ProjectUID,
         TaskName: task.TaskName,
+        OutlineLevel: task.OutlineLevel,
+        OutlineNumber: task.OutlineNumber,
+        WBS: task.WBS,
+        IsSummary: task.IsSummary,
+        Predecessors: task.Predecessors,
         ResourceNames: task.ResourceNames,
         Start: task.Start,
         Finish: task.Finish,
@@ -162,6 +172,15 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                 </Form.Select>
                                 <Form.Text className="text-body-secondary">
                                     Hold `Ctrl` on Windows or `Command` on Mac to select multiple assignees.
+                                </Form.Text>
+                            </Form.Group>
+                        </Col>
+                        <Col md={12}>
+                            <Form.Group>
+                                <Form.Label className="fw-semibold">Predecessors</Form.Label>
+                                <Form.Control value={formState.Predecessors || 'None'} readOnly plaintext />
+                                <Form.Text className="text-body-secondary">
+                                    Imported dependency labels are shown here for reference.
                                 </Form.Text>
                             </Form.Group>
                         </Col>

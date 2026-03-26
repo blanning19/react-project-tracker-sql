@@ -6,6 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class TaskBase(BaseModel):
     ProjectUID: int
     TaskName: str
+    OutlineLevel: int = Field(ge=1, default=1)
+    OutlineNumber: str = ""
+    WBS: str = ""
+    IsSummary: bool = False
+    Predecessors: str = ""
     ResourceNames: str = ""
     Start: date
     Finish: date
@@ -40,6 +45,7 @@ class TaskRead(TaskBase):
 class ProjectBase(BaseModel):
     ProjectName: str
     ProjectManager: str
+    CalendarName: str = ""
     Start: date
     Finish: date
     DurationDays: int = Field(ge=1)
@@ -68,6 +74,7 @@ class ProjectRead(ProjectBase):
     model_config = ConfigDict(from_attributes=True)
 
     ProjectUID: int
+    CreatedDate: date
     IsOverdue: bool
     tasks: list[TaskRead] = []
 
@@ -99,3 +106,14 @@ class ManagerRead(BaseModel):
 
     managerId: int
     displayName: str
+
+
+class LogLineRead(BaseModel):
+    lineNumber: int
+    level: str
+    content: str
+
+
+class LogFileRead(BaseModel):
+    filePath: str | None
+    lines: list[LogLineRead]
