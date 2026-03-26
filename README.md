@@ -179,6 +179,19 @@ npm run backend:install
 
 This installs the backend package plus dev tools such as Ruff into `backend/.venv`.
 
+What that install command is doing:
+
+- it uses the Python executable inside `backend/.venv`
+- it installs the Python project defined by `backend/pyproject.toml`
+- it installs in editable mode, so backend code changes are picked up without reinstalling
+- it includes the `dev` dependency group, which currently installs Ruff
+
+In other words:
+
+- `backend/.venv` is the Python environment
+- `backend/pyproject.toml` defines what gets installed into that environment
+- `backend/project_tracker_api/` is the source code being installed
+
 ### 3. Configure Environment Variables
 
 Copy:
