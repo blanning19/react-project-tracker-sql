@@ -31,8 +31,26 @@ export default tseslint.config(
         rules: {
             ...reactHooksPlugin.configs.recommended.rules,
             'react/react-in-jsx-scope': 'off',
+            'react/jsx-pascal-case': 'error',
             'react-hooks/set-state-in-effect': 'off',
             'react-refresh/only-export-components': 'off',
+            '@typescript-eslint/naming-convention': [
+                'error',
+                {
+                    selector: 'typeLike',
+                    format: ['PascalCase'],
+                },
+                {
+                    selector: 'function',
+                    format: ['camelCase', 'PascalCase'],
+                    leadingUnderscore: 'allow',
+                },
+                {
+                    selector: 'variable',
+                    format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+                    leadingUnderscore: 'allow',
+                },
+            ],
         },
         settings: {
             react: {

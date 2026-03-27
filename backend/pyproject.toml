@@ -39,7 +39,8 @@ quote-style = "double"
 select = [
   "E",
   "F",
-  "I"
+  "I",
+  "N802"
 ]
 
 [tool.pytest.ini_options]
