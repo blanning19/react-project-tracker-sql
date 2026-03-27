@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Col, Container, Pagination, Row, Spinner } from 'react-bootstrap';
+import { Col, Container, Pagination, Row, Spinner } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { LiveClock } from '../../dashboard/components/LiveClock';
 import { HomeProjectSortField, ProjectSummaryTable } from './ProjectSummaryTable';
@@ -82,9 +82,9 @@ export function HomePage() {
                             </div>
                             <div className="d-flex flex-column align-items-lg-end gap-3">
                                 <LiveClock />
-                                <Button as={Link} to="/projects/new">
+                                <Link to="/projects/new" className="btn btn-primary">
                                     Create or Import Project
-                                </Button>
+                                </Link>
                             </div>
                         </div>
                     </div>

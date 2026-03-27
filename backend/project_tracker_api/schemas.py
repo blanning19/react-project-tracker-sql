@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -117,3 +117,56 @@ class LogLineRead(BaseModel):
 class LogFileRead(BaseModel):
     filePath: str | None
     lines: list[LogLineRead]
+
+
+class ImportEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    importEventId: int
+    createdAt: datetime
+    sourceFileName: str
+    importedBy: str
+    status: str
+    projectUid: int | None
+    projectName: str
+    taskCount: int
+    message: str
+
+
+class ImportEventSummaryRead(BaseModel):
+    totalImports: int
+    successfulImports: int
+    failedImports: int
+    lastFailureMessage: str | None
+
+
+class UserAccessBase(BaseModel):
+    userName: str
+    role: str
+    canViewAdmin: bool = False
+    canViewLogs: bool = False
+    notes: str = ""
+
+
+class UserAccessRead(UserAccessBase):
+    pass
+
+
+class UserAccessUpdate(BaseModel):
+    role: str
+    canViewAdmin: bool
+    canViewLogs: bool
+    notes: str = ""
+
+
+class EnvironmentSummaryRead(BaseModel):
+    appVersion: str
+    adminUserName: str
+    logFilePath: str | None
+    corsOrigins: list[str]
+    databaseBackend: str
+    databaseHost: str | None
+    databaseName: str | None
+    swaggerDocsUrl: str
+    openapiJsonUrl: str
+    healthUrl: str

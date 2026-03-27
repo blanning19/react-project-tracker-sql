@@ -30,6 +30,53 @@ export interface LogFileRecord {
     lines: LogLineRecord[];
 }
 
+export interface ImportEventRecord {
+    importEventId: number;
+    createdAt: string;
+    sourceFileName: string;
+    importedBy: string;
+    status: string;
+    projectUid: number | null;
+    projectName: string;
+    taskCount: number;
+    message: string;
+}
+
+export interface ImportEventSummaryRecord {
+    totalImports: number;
+    successfulImports: number;
+    failedImports: number;
+    lastFailureMessage: string | null;
+}
+
+export interface UserAccessRecord {
+    userName: string;
+    role: string;
+    canViewAdmin: boolean;
+    canViewLogs: boolean;
+    notes: string;
+}
+
+export interface UserAccessPayload {
+    role: string;
+    canViewAdmin: boolean;
+    canViewLogs: boolean;
+    notes: string;
+}
+
+export interface EnvironmentSummaryRecord {
+    appVersion: string;
+    adminUserName: string;
+    logFilePath: string | null;
+    corsOrigins: string[];
+    databaseBackend: string;
+    databaseHost: string | null;
+    databaseName: string | null;
+    swaggerDocsUrl: string;
+    openapiJsonUrl: string;
+    healthUrl: string;
+}
+
 export interface TaskRecord {
     TaskUID: number;
     ProjectUID: number;

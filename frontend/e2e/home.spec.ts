@@ -45,5 +45,5 @@ test('home page renders project data with mocked API responses', async ({ page }
 
     await expect(page.getByRole('heading', { level: 1, name: 'All projects' })).toBeVisible();
     await expect(page.getByText('Website refresh')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Create or Import Project' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Create or Import Project' })).toBeVisible();
 });

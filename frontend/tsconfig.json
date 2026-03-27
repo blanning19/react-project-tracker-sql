@@ -10,12 +10,13 @@
         "strict": true,
         "forceConsistentCasingInFileNames": true,
         "module": "ESNext",
-        "moduleResolution": "Node",
+        "moduleResolution": "Bundler",
         "resolveJsonModule": true,
         "isolatedModules": true,
         "noEmit": true,
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "types": ["vitest/globals"]
     },
-    "include": ["src", "vite.config.ts", "playwright.config.ts"],
+    "include": ["src"],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

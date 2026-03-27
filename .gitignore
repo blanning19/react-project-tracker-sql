@@ -5,6 +5,7 @@ dist/
 frontend/dist/
 .vite/
 frontend/.vite/
+*.tsbuildinfo
 logs/
 *.log
 npm-debug.log*

@@ -19,6 +19,14 @@ configure_logging(settings.log_level, settings.log_file_path)
 logger = logging.getLogger(__name__)
 
 
+def ensure_admin_access(db: Session, user_name: str, *, require_log_access: bool = False) -> None:
+    access_record = crud.get_or_create_user_access(db, user_name.strip())
+    has_access = access_record.can_view_logs if require_log_access else access_record.can_view_admin
+    if not has_access:
+        logger.warning("Rejected admin access for non-admin user.", extra={"userName": user_name})
+        raise HTTPException(status_code=403, detail="You are not allowed to access admin tools.")
+
+
 def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -90,18 +98,48 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
         tags=["projects"],
         summary="Import a project from Microsoft Project XML",
     )
-    async def import_project(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    async def import_project(user_name: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
         file_name = file.filename or "imported-project.xml"
         if not file_name.lower().endswith(".xml"):
+            crud.record_import_event(
+                db,
+                source_file_name=file_name,
+                imported_by=user_name,
+                status="Failed",
+                project_uid=None,
+                project_name="",
+                task_count=0,
+                message="Upload a Microsoft Project XML export (.xml).",
+            )
             raise HTTPException(status_code=400, detail="Upload a Microsoft Project XML export (.xml).")
 
         file_bytes = await file.read()
         if not file_bytes:
+            crud.record_import_event(
+                db,
+                source_file_name=file_name,
+                imported_by=user_name,
+                status="Failed",
+                project_uid=None,
+                project_name="",
+                task_count=0,
+                message="The uploaded file is empty.",
+            )
             raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
         try:
-            imported_project = parse_project_xml(file_bytes, file_name)
+            imported_project = parse_project_xml(file_bytes, file_name, imported_by=user_name)
         except ValueError as exc:
+            crud.record_import_event(
+                db,
+                source_file_name=file_name,
+                imported_by=user_name,
+                status="Failed",
+                project_uid=None,
+                project_name="",
+                task_count=0,
+                message=str(exc),
+            )
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         return crud.import_project(db, imported_project)
@@ -219,11 +257,73 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
     @app.get(
         "/api/logs/current", response_model=schemas.LogFileRead, tags=["settings"], summary="Read the current log file"
     )
-    def get_current_log(user_name: str):
-        if user_name.strip().lower() != settings.admin_user_name.strip().lower():
-            logger.warning("Rejected log view request for non-admin user.", extra={"userName": user_name})
-            raise HTTPException(status_code=403, detail="You are not allowed to view the application log.")
+    def get_current_log(user_name: str, db: Session = Depends(get_db)):
+        ensure_admin_access(db, user_name, require_log_access=True)
         return crud.read_log_file(settings.log_file_path)
+
+    @app.get(
+        "/api/admin/environment",
+        response_model=schemas.EnvironmentSummaryRead,
+        tags=["system"],
+        summary="Get environment and configuration summary",
+    )
+    def get_environment_summary(user_name: str, db: Session = Depends(get_db)):
+        ensure_admin_access(db, user_name)
+        return crud.get_environment_summary()
+
+    @app.get(
+        "/api/admin/import-events",
+        response_model=list[schemas.ImportEventRead],
+        tags=["projects"],
+        summary="List recent import events",
+    )
+    def list_import_events(user_name: str, db: Session = Depends(get_db)):
+        ensure_admin_access(db, user_name)
+        return crud.get_recent_import_events(db)
+
+    @app.get(
+        "/api/admin/import-events/summary",
+        response_model=schemas.ImportEventSummaryRead,
+        tags=["projects"],
+        summary="Get import event summary",
+    )
+    def get_import_event_summary(user_name: str, db: Session = Depends(get_db)):
+        ensure_admin_access(db, user_name)
+        return crud.get_import_event_summary(db)
+
+    @app.get(
+        "/api/admin/access/me",
+        response_model=schemas.UserAccessRead,
+        tags=["settings"],
+        summary="Get current user admin access",
+    )
+    def get_current_user_access(user_name: str, db: Session = Depends(get_db)):
+        return crud.get_user_access(db, user_name)
+
+    @app.get(
+        "/api/admin/access",
+        response_model=list[schemas.UserAccessRead],
+        tags=["settings"],
+        summary="List user access controls",
+    )
+    def list_user_access(user_name: str, db: Session = Depends(get_db)):
+        ensure_admin_access(db, user_name)
+        return crud.get_user_access_list(db)
+
+    @app.put(
+        "/api/admin/access/{target_user_name}",
+        response_model=schemas.UserAccessRead,
+        tags=["settings"],
+        summary="Update user access controls",
+    )
+    def update_user_access(
+        target_user_name: str,
+        user_name: str,
+        payload: schemas.UserAccessUpdate,
+        db: Session = Depends(get_db),
+    ):
+        ensure_admin_access(db, user_name)
+        return crud.update_user_access(db, target_user_name, payload)
 
     return app
 

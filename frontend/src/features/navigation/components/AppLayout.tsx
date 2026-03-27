@@ -1,8 +1,19 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { apiFetch } from '../../../shared/api/http';
+import { UserAccessRecord } from '../../../shared/types/models';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 
 export function AppLayout() {
     const { settings } = useThemeSettings();
+    const [userAccess, setUserAccess] = useState<UserAccessRecord | null>(null);
+    const currentUserName = settings?.currentUserName ?? 'Ava Patel';
+
+    useEffect(() => {
+        apiFetch<UserAccessRecord>(`/admin/access/me?user_name=${encodeURIComponent(currentUserName)}`)
+            .then(setUserAccess)
+            .catch(() => setUserAccess(null));
+    }, [currentUserName]);
 
     return (
         <div className="app-shell app-shell-grid">
@@ -21,7 +32,7 @@ export function AppLayout() {
                             to="/my-dashboard"
                             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                         >
-                            My Dashboard
+                            My Work
                         </NavLink>
                         <NavLink
                             to="/settings"
@@ -29,6 +40,14 @@ export function AppLayout() {
                         >
                             Settings
                         </NavLink>
+                        {userAccess?.canViewAdmin ? (
+                            <NavLink
+                                to="/admin"
+                                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                            >
+                                Admin
+                            </NavLink>
+                        ) : null}
                     </nav>
                     <div className="mt-auto p-3 p-lg-4 border-top border-secondary-subtle">
                         <p className="mb-0 text-body-secondary small">Theme: {settings?.theme ?? 'light'}</p>

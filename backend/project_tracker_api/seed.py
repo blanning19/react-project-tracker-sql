@@ -1,7 +1,7 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from .database import Base, SessionLocal, engine
-from .models import Manager, Project, Task, TeamMember, UserSetting
+from .models import ImportEvent, Manager, Project, Task, TeamMember, UserAccess, UserSetting
 
 PROJECTS = [
     {
@@ -192,6 +192,66 @@ MANAGERS = [
     {"manager_id": 4, "display_name": "Taylor Brooks"},
 ]
 
+USER_ACCESS = [
+    {
+        "user_name": "Ava Patel",
+        "role": "Admin",
+        "can_view_admin": True,
+        "can_view_logs": True,
+        "notes": "Default workspace admin account.",
+    },
+    {
+        "user_name": "Jordan Lee",
+        "role": "Manager",
+        "can_view_admin": False,
+        "can_view_logs": False,
+        "notes": "Project manager with standard workspace access.",
+    },
+    {
+        "user_name": "Mateo Gomez",
+        "role": "Manager",
+        "can_view_admin": False,
+        "can_view_logs": False,
+        "notes": "Project manager with standard workspace access.",
+    },
+]
+
+IMPORT_EVENTS = [
+    {
+        "import_event_id": 1,
+        "created_at": datetime.utcnow() - timedelta(days=2),
+        "source_file_name": "advanced-product-launch.xml",
+        "imported_by": "Ava Patel",
+        "status": "Succeeded",
+        "project_uid": 1001,
+        "project_name": "ERP Modernization",
+        "task_count": 6,
+        "message": "Project XML imported successfully.",
+    },
+    {
+        "import_event_id": 2,
+        "created_at": datetime.utcnow() - timedelta(days=1, hours=3),
+        "source_file_name": "client-portal-rollout.xml",
+        "imported_by": "Jordan Lee",
+        "status": "Succeeded",
+        "project_uid": 1003,
+        "project_name": "Client Portal Rollout",
+        "task_count": 2,
+        "message": "Project XML imported successfully.",
+    },
+    {
+        "import_event_id": 3,
+        "created_at": datetime.utcnow() - timedelta(hours=6),
+        "source_file_name": "invalid-plan.txt",
+        "imported_by": "Ava Patel",
+        "status": "Failed",
+        "project_uid": None,
+        "project_name": "",
+        "task_count": 0,
+        "message": "Upload a Microsoft Project XML export (.xml).",
+    },
+]
+
 
 def build_additional_projects() -> list[dict[str, object]]:
     managers = ["Ava Patel", "Jordan Lee", "Mateo Gomez", "Taylor Brooks"]
@@ -234,6 +294,8 @@ def seed() -> None:
         session.add_all(Task(**task) for task in TASKS)
         session.add_all(TeamMember(**member) for member in TEAM_MEMBERS)
         session.add_all(Manager(**manager) for manager in MANAGERS)
+        session.add_all(UserAccess(**access) for access in USER_ACCESS)
+        session.add_all(ImportEvent(**event) for event in IMPORT_EVENTS)
         session.add(
             UserSetting(
                 user_id="demo-user",

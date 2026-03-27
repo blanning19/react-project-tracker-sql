@@ -17,6 +17,7 @@ react-project-tracker-sql/
 - Displays portfolio-level project data on the Home page
 - Shows personalized work on My Dashboard
 - Supports project detail views, project editing, and task editing
+- Includes a separate Admin area for diagnostics, import auditing, visibility controls, and API documentation links
 - Enforces owner vs non-owner behavior on project and task access
 - Uses seeded local data for development and UI testing
 
@@ -143,6 +144,10 @@ Currently displayed from advanced XML task structure:
 - WBS values
 - outline-based hierarchy indentation
 - summary phases shown as task rows
+- milestone badges and milestone timeline checkpoints
+- dependency breakdown and dependency labels
+- Gantt-style timeline view
+- imported calendar metadata
 
 Important note:
 
@@ -158,6 +163,8 @@ samples/ms-project/
 Current sample mix:
 
 - `simple-website-refresh.xml` for a minimal import path
+- `client-portal-rollout.xml` for a smaller rollout plan with milestones and assigned resources
+- `erp-modernization.xml` for a simpler portfolio-style import verification sample
 - `advanced-product-launch.xml` for WBS, summary phases, milestones, dependencies, resources, and notes
 - `advanced-infrastructure-program.xml` for a larger roadmap-style structure with the same advanced features
 
@@ -267,7 +274,7 @@ Then set at least:
 
 - `PROJECT_TRACKER_DATABASE_URL`
 - optional CORS overrides if needed
-- optional `PROJECT_TRACKER_ADMIN_USER_NAME` if you want a different account to see the log viewer in Settings
+- optional `PROJECT_TRACKER_ADMIN_USER_NAME` if you want a different default admin account
 
 ### 4. Seed Local Development Data
 
@@ -313,6 +320,8 @@ npm run backend:lint
 npm run backend:format:check
 npm run backend:format
 npm run backend:test
+npm run backend:audit
+npm run backend:security
 ```
 
 From `frontend/`:
@@ -345,6 +354,8 @@ npm run test:e2e
 - `npm run backend:format:check` checks whether backend Python files match Ruff formatting rules without rewriting files
 - `npm run backend:format` rewrites backend Python files to match Ruff formatting rules
 - `npm run backend:test` runs backend automated tests with pytest
+- `npm run backend:audit` runs `pip-audit` against backend Python dependencies
+- `npm run backend:security` runs Bandit against the backend Python source
 - `npm run check` runs the main pre-commit validation flow for the repo
 
 Formatting note:
@@ -393,7 +404,7 @@ For Playwright setup and smoke tests:
 
 ```powershell
 cd frontend
-npx playwright install chromium
+npx playwright install
 npm run test:e2e
 ```
 
@@ -405,19 +416,101 @@ Current testing status:
 - `vite build` is a build verification step, not a test suite
 - Ruff is a linter and formatter, not a test runner
 
+Additional hardening commands:
+
+- `npm run backend:audit` for Python dependency vulnerability scanning
+- `npm run backend:security` for Python security-focused static analysis
+
+## Testing Conventions
+
+Recommended test placement for this repo:
+
+- frontend Vitest unit and component tests should live next to the feature they cover
+- shared frontend test helpers, fixtures, and setup files should live in `frontend/src/test/`
+- Playwright end-to-end tests should live in `frontend/e2e/`
+- backend pytest tests should live in `backend/tests/`
+
+Suggested structure as the suite grows:
+
+```text
+frontend/
+  src/
+    features/
+      home/
+        components/
+          ProjectSummaryTable.tsx
+          ProjectSummaryTable.test.tsx
+    test/
+      setup.ts
+      renderWithProviders.tsx
+      fixtures.ts
+  e2e/
+    home.spec.ts
+    project-import.spec.ts
+    settings.spec.ts
+
+backend/
+  tests/
+    conftest.py
+    api/
+      test_projects.py
+      test_tasks.py
+      test_settings.py
+    import/
+      test_ms_project_import.py
+    crud/
+      test_project_crud.py
+```
+
+This keeps frontend component tests close to the code they validate, shared test utilities in one place, end-to-end coverage separated by user flow, and backend tests grouped by API or data layer responsibility.
+
+## Migration Plan
+
+The backend currently includes a lightweight startup-time schema patch for a few legacy columns in local development.
+
+Recommended next step:
+
+- adopt Alembic for database migrations instead of expanding startup patching
+
+Suggested future migration flow:
+
+- create an initial Alembic baseline from the current schema
+- add one migration file per schema change
+- run migrations during local setup and deployment
+- remove legacy startup patch logic once the migration path is stable
+
+This is intentionally planned separately from the current hardening and test work so the repo can keep shipping while migration tooling is introduced carefully.
+
 ## App URLs
 
 - Frontend: `http://127.0.0.1:5173`
+- Home page: `http://127.0.0.1:5173/`
+- My Work: `http://127.0.0.1:5173/my-dashboard`
+- Admin page: `http://127.0.0.1:5173/admin`
 - Backend health: `http://127.0.0.1:8000/health`
 - API base default: `http://127.0.0.1:8000/api`
+- FastAPI Swagger UI: `http://127.0.0.1:8000/docs`
+- FastAPI OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
 - Create/import page: `http://127.0.0.1:5173/projects/new`
+- Settings page: `http://127.0.0.1:5173/settings`
 
 ## Log Viewer
 
-The Settings page includes a current-log viewer for the admin account only.
+The Admin page includes:
 
+- a recent import history panel
+- a failed import summary
+- user visibility and role controls
+- an environment and configuration summary
+- a current-log viewer for accounts with log visibility enabled
+- quick links to Swagger docs, OpenAPI JSON, and the backend health check
+
+Admin visibility note:
+
+- the `Admin` link is shown only for accounts whose access record allows admin visibility
+- new access records default to admin visibility only for `PROJECT_TRACKER_ADMIN_USER_NAME`
+- log visibility is controlled separately from general admin visibility
 - the backend reads the current file configured by `PROJECT_TRACKER_LOG_FILE_PATH`
-- access is allowed only when the current user name matches `PROJECT_TRACKER_ADMIN_USER_NAME`
 - warning and error lines are highlighted in the UI for faster scanning
 
 ## Styling Notes
@@ -435,8 +528,11 @@ Theme handling is driven through `ThemeProvider`, which applies `data-bs-theme` 
 - Use spaces only and 4-space indentation
 - Frontend formatting is managed with Prettier
 - Frontend linting is managed with ESLint flat config
+- Frontend components should use PascalCase
+- Frontend non-component functions should use camelCase
 - Backend commands should be run through the repo virtual environment in `backend/.venv`
 - Backend style is configured for Ruff in `backend/pyproject.toml`
+- Backend Python functions should use snake_case following PEP 8
 - Keep the root `README.md` as the main entry point for project setup and architecture
 
 If the documentation grows substantially, the next step is to split deeper topics into a `docs/` folder while keeping this file as the main overview.

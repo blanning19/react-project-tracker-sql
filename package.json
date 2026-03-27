@@ -3,12 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "check": "npm run frontend:lint && npm run frontend:format:check && npm run frontend:test && npm run frontend:build && npm run backend:lint && npm run backend:format:check && npm run backend:test",
+    "check": "npm run frontend:lint && npm run frontend:format:check && npm run frontend:typecheck && npm run frontend:test && npm run frontend:build && npm run backend:lint && npm run backend:format:check && npm run backend:test",
     "frontend:install": "npm --prefix frontend install",
     "frontend:dev": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build",
     "frontend:lint": "npm --prefix frontend run lint",
     "frontend:format:check": "npm --prefix frontend run format:check",
+    "frontend:typecheck": "npm --prefix frontend run typecheck",
     "frontend:test": "npm --prefix frontend run test",
     "frontend:test:e2e": "npm --prefix frontend run test:e2e",
     "backend:venv": "python -m venv backend/.venv",
@@ -19,6 +20,8 @@
     "backend:lint": ".\\backend\\.venv\\Scripts\\python.exe -m ruff check backend",
     "backend:format:check": ".\\backend\\.venv\\Scripts\\python.exe -m ruff format --check backend",
     "backend:format": ".\\backend\\.venv\\Scripts\\python.exe -m ruff format backend",
-    "backend:test": ".\\backend\\.venv\\Scripts\\python.exe -m pytest backend/tests -q"
+    "backend:test": ".\\backend\\.venv\\Scripts\\python.exe -m pytest backend/tests -q",
+    "backend:audit": ".\\backend\\.venv\\Scripts\\pip-audit.exe",
+    "backend:security": ".\\backend\\.venv\\Scripts\\bandit.exe -q -r backend/project_tracker_api"
   }
 }

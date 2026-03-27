@@ -8,6 +8,7 @@
         "build": "vite build",
         "lint": "eslint . --max-warnings 0",
         "format:check": "prettier --check .",
+        "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:e2e": "playwright test",

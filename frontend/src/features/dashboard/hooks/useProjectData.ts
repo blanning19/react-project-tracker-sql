@@ -70,10 +70,14 @@ export function useProjectData(settings: UserSettings | null) {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const importedProject = await apiFetch<ProjectRecord>('/projects/import', {
-                method: 'POST',
-                body: formData,
-            });
+            const importUserName = settings?.currentUserName ?? 'Ava Patel';
+            const importedProject = await apiFetch<ProjectRecord>(
+                `/projects/import?user_name=${encodeURIComponent(importUserName)}`,
+                {
+                    method: 'POST',
+                    body: formData,
+                },
+            );
             setEditingProject(null);
             setEditingTask(null);
             await loadProjects();

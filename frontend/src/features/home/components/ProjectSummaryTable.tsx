@@ -90,14 +90,13 @@ export function ProjectSummaryTable({
                                     {actionLabel ? (
                                         <td className="text-end">
                                             {actionHref ? (
-                                                <Button
-                                                    as={Link}
+                                                <Link
                                                     to={actionHref(project)}
-                                                    size="sm"
-                                                    variant="outline-primary"
+                                                    className="btn btn-outline-primary btn-sm"
+                                                    role="button"
                                                 >
                                                     {actionLabel}
-                                                </Button>
+                                                </Link>
                                             ) : (
                                                 <Button
                                                     size="sm"

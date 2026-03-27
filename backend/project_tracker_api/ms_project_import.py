@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from xml.etree import ElementTree as ET
+
+from defusedxml import ElementTree as ET
 
 
 @dataclass
@@ -28,6 +29,7 @@ class ImportedTask:
 class ImportedProject:
     name: str
     manager: str
+    imported_by: str
     calendar_name: str
     start: date
     finish: date
@@ -253,7 +255,7 @@ def parse_tasks(root: ET.Element, project_start: date, project_finish: date) -> 
     return tasks
 
 
-def parse_project_xml(file_bytes: bytes, source_file_name: str) -> ImportedProject:
+def parse_project_xml(file_bytes: bytes, source_file_name: str, imported_by: str = "Unknown") -> ImportedProject:
     try:
         root = ET.fromstring(file_bytes)
     except ET.ParseError as exc:
@@ -291,6 +293,7 @@ def parse_project_xml(file_bytes: bytes, source_file_name: str) -> ImportedProje
     return ImportedProject(
         name=project_name,
         manager=manager,
+        imported_by=imported_by,
         calendar_name=calendar_name,
         start=project_start,
         finish=project_finish,

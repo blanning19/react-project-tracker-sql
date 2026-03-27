@@ -157,7 +157,9 @@ export function ProjectForm({
                                     <Form.Control
                                         type="file"
                                         accept=".xml"
-                                        onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+                                        onChange={(event) =>
+                                            setImportFile((event.currentTarget as HTMLInputElement).files?.[0] ?? null)
+                                        }
                                     />
                                     <Form.Text className="text-body-secondary">
                                         Upload a Microsoft Project XML export to create the project, tasks, managers,

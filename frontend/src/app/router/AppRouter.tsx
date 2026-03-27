@@ -1,7 +1,8 @@
-﻿import { Navigate, Route, Routes } from 'react-router-dom';
-import { AppLayout } from '../../features/navigation/components/AppLayout';
-import { HomePage } from '../../features/home/components/HomePage';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { AdminPage } from '../../features/admin/components/AdminPage';
 import { MyDashboardPage } from '../../features/dashboard/components/MyDashboardPage';
+import { HomePage } from '../../features/home/components/HomePage';
+import { AppLayout } from '../../features/navigation/components/AppLayout';
 import { ProjectCreatePage } from '../../features/projects/components/ProjectCreatePage';
 import { ProjectDetailPage } from '../../features/projects/components/ProjectDetailPage';
 import { SettingsPage } from '../../features/settings/components/SettingsPage';
@@ -15,6 +16,7 @@ export function AppRouter() {
                 <Route path="/projects/new" element={<ProjectCreatePage />} />
                 <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/admin" element={<AdminPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

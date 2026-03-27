@@ -3,10 +3,12 @@ from datetime import date
 from pathlib import Path
 
 from sqlalchemy import func, select
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from . import models, schemas
+from .config import get_settings
 from .ms_project_import import ImportedProject
 
 logger = logging.getLogger(__name__)
@@ -217,7 +219,18 @@ def import_project(db: Session, imported_project: ImportedProject) -> schemas.Pr
         "Imported project from Microsoft Project XML.",
         extra={"projectUID": project.ProjectUID, "sourceFileName": imported_project.source_file_name},
     )
-    return serialize_project(get_project(db, project.ProjectUID))
+    serialized_project = serialize_project(get_project(db, project.ProjectUID))
+    record_import_event(
+        db,
+        source_file_name=imported_project.source_file_name,
+        imported_by=imported_project.imported_by,
+        status="Succeeded",
+        project_uid=serialized_project.ProjectUID,
+        project_name=serialized_project.ProjectName,
+        task_count=len(serialized_project.tasks),
+        message="Project XML imported successfully.",
+    )
+    return serialized_project
 
 
 def get_project(db: Session, project_id: int) -> models.Project | None:
@@ -400,3 +413,135 @@ def read_log_file(log_file_path: str | None, max_lines: int = 400) -> schemas.Lo
         for index, line in enumerate(tail)
     ]
     return schemas.LogFileRead(filePath=str(path), lines=lines)
+
+
+def serialize_import_event(import_event: models.ImportEvent) -> schemas.ImportEventRead:
+    return schemas.ImportEventRead(
+        importEventId=import_event.import_event_id,
+        createdAt=import_event.created_at,
+        sourceFileName=import_event.source_file_name,
+        importedBy=import_event.imported_by,
+        status=import_event.status,
+        projectUid=import_event.project_uid,
+        projectName=import_event.project_name,
+        taskCount=import_event.task_count,
+        message=import_event.message,
+    )
+
+
+def record_import_event(
+    db: Session,
+    *,
+    source_file_name: str,
+    imported_by: str,
+    status: str,
+    project_uid: int | None,
+    project_name: str,
+    task_count: int,
+    message: str,
+) -> None:
+    import_event = models.ImportEvent(
+        source_file_name=source_file_name,
+        imported_by=imported_by or "Unknown",
+        status=status,
+        project_uid=project_uid,
+        project_name=project_name,
+        task_count=task_count,
+        message=message,
+    )
+    db.add(import_event)
+    commit_with_rollback(
+        db,
+        "Failed to record import event.",
+        source_file_name=source_file_name,
+        imported_by=imported_by,
+        status=status,
+    )
+
+
+def get_recent_import_events(db: Session, limit: int = 10) -> list[schemas.ImportEventRead]:
+    import_events = db.scalars(
+        select(models.ImportEvent)
+        .order_by(models.ImportEvent.created_at.desc(), models.ImportEvent.import_event_id.desc())
+        .limit(limit)
+    ).all()
+    return [serialize_import_event(import_event) for import_event in import_events]
+
+
+def get_import_event_summary(db: Session) -> schemas.ImportEventSummaryRead:
+    import_events = db.scalars(select(models.ImportEvent).order_by(models.ImportEvent.created_at.desc())).all()
+    successful_imports = sum(1 for import_event in import_events if import_event.status == "Succeeded")
+    failed_imports = sum(1 for import_event in import_events if import_event.status == "Failed")
+    last_failure = next((import_event for import_event in import_events if import_event.status == "Failed"), None)
+    return schemas.ImportEventSummaryRead(
+        totalImports=len(import_events),
+        successfulImports=successful_imports,
+        failedImports=failed_imports,
+        lastFailureMessage=last_failure.message if last_failure else None,
+    )
+
+
+def serialize_user_access(user_access: models.UserAccess) -> schemas.UserAccessRead:
+    return schemas.UserAccessRead(
+        userName=user_access.user_name,
+        role=user_access.role,
+        canViewAdmin=user_access.can_view_admin,
+        canViewLogs=user_access.can_view_logs,
+        notes=user_access.notes,
+    )
+
+
+def get_or_create_user_access(db: Session, user_name: str) -> models.UserAccess:
+    user_access = db.get(models.UserAccess, user_name)
+    if user_access:
+        return user_access
+
+    settings = get_settings()
+    normalized_name = user_name.strip()
+    user_access = models.UserAccess(
+        user_name=normalized_name,
+        role="Admin" if normalized_name == settings.admin_user_name else "Viewer",
+        can_view_admin=normalized_name == settings.admin_user_name,
+        can_view_logs=normalized_name == settings.admin_user_name,
+    )
+    db.add(user_access)
+    commit_with_rollback(db, "Failed to create user access.", user_name=user_name)
+    db.refresh(user_access)
+    return user_access
+
+
+def get_user_access_list(db: Session) -> list[schemas.UserAccessRead]:
+    access_records = db.scalars(select(models.UserAccess).order_by(models.UserAccess.user_name)).all()
+    return [serialize_user_access(access_record) for access_record in access_records]
+
+
+def get_user_access(db: Session, user_name: str) -> schemas.UserAccessRead:
+    return serialize_user_access(get_or_create_user_access(db, user_name))
+
+
+def update_user_access(db: Session, user_name: str, payload: schemas.UserAccessUpdate) -> schemas.UserAccessRead:
+    access_record = get_or_create_user_access(db, user_name)
+    access_record.role = payload.role
+    access_record.can_view_admin = payload.canViewAdmin
+    access_record.can_view_logs = payload.canViewLogs
+    access_record.notes = payload.notes
+    commit_with_rollback(db, "Failed to update user access.", user_name=user_name)
+    db.refresh(access_record)
+    return serialize_user_access(access_record)
+
+
+def get_environment_summary() -> schemas.EnvironmentSummaryRead:
+    settings = get_settings()
+    database_url = make_url(settings.database_url)
+    return schemas.EnvironmentSummaryRead(
+        appVersion="0.1.0",
+        adminUserName=settings.admin_user_name,
+        logFilePath=settings.log_file_path,
+        corsOrigins=settings.cors_origins,
+        databaseBackend=database_url.get_backend_name(),
+        databaseHost=database_url.host,
+        databaseName=database_url.database,
+        swaggerDocsUrl="http://127.0.0.1:8000/docs",
+        openapiJsonUrl="http://127.0.0.1:8000/openapi.json",
+        healthUrl="http://127.0.0.1:8000/health",
+    )

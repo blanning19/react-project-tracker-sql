@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -75,3 +75,30 @@ class Manager(Base):
 
     manager_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     display_name: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
+
+
+class ImportEvent(Base):
+    __tablename__ = "import_events"
+
+    import_event_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    source_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    imported_by: Mapped[str] = mapped_column(String(150), nullable=False, default="Unknown")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="Succeeded")
+    project_uid: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.ProjectUID", ondelete="SET NULL"),
+        nullable=True,
+    )
+    project_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    task_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+
+
+class UserAccess(Base):
+    __tablename__ = "user_access"
+
+    user_name: Mapped[str] = mapped_column(String(150), primary_key=True)
+    role: Mapped[str] = mapped_column(String(50), nullable=False, default="Viewer")
+    can_view_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    can_view_logs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
