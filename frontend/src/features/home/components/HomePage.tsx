@@ -74,11 +74,10 @@ export function HomePage() {
                         <div className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
                             <div>
                                 <p className="text-uppercase small mb-2 hero-kicker">Home</p>
-                                <h1 className="display-6 fw-semibold mb-2">
-                                    All projects
-                                </h1>
+                                <h1 className="display-6 fw-semibold mb-2">All projects</h1>
                                 <p className="mb-0 text-body-secondary">
-                                    This is the default landing page for the workspace. It shows the complete project list and status.
+                                    This is the default landing page for the workspace. It shows the complete project
+                                    list and status.
                                 </p>
                             </div>
                             <div className="d-flex flex-column align-items-lg-end gap-3">

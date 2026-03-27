@@ -4,13 +4,7 @@ import { SortDirection, ProjectRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 
-export type HomeProjectSortField =
-    | 'ProjectName'
-    | 'ProjectManager'
-    | 'CreatedDate'
-    | 'Status'
-    | 'Finish'
-    | 'OpenTasks';
+export type HomeProjectSortField = 'ProjectName' | 'ProjectManager' | 'CreatedDate' | 'Status' | 'Finish' | 'OpenTasks';
 
 interface ProjectSummaryTableProps {
     projects: ProjectRecord[];
@@ -88,7 +82,10 @@ export function ProjectSummaryTable({
                                     </td>
                                     <td>{formatDate(project.Finish)}</td>
                                     <td>
-                                        {project.tasks.filter((task) => task.Status.toLowerCase() !== 'completed').length}
+                                        {
+                                            project.tasks.filter((task) => task.Status.toLowerCase() !== 'completed')
+                                                .length
+                                        }
                                     </td>
                                     {actionLabel ? (
                                         <td className="text-end">

@@ -70,8 +70,8 @@ export function MyDashboardPage() {
                                 <p className="text-uppercase small mb-2 hero-kicker">My Work</p>
                                 <h1 className="display-6 fw-semibold mb-2">Active projects and assigned tasks.</h1>
                                 <p className="mb-0 text-body-secondary">
-                                    This view shows the projects you own and the open tasks assigned to you, so you
-                                    can jump straight into your active work for {currentUserName}.
+                                    This view shows the projects you own and the open tasks assigned to you, so you can
+                                    jump straight into your active work for {currentUserName}.
                                 </p>
                             </div>
                             <Link to="/projects/new" className="btn btn-primary">

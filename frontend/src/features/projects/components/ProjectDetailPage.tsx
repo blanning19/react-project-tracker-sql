@@ -150,9 +150,10 @@ export function ProjectDetailPage() {
     const isTaskOpen = Boolean(editingTask);
     const backPath = origin === 'home' ? '/' : '/my-dashboard';
     const backLabel = origin === 'home' ? 'Back to Home' : 'Back to My Dashboard';
-    const flashMessage = typeof location.state === 'object' && location.state && 'flashMessage' in location.state
-        ? String(location.state.flashMessage)
-        : null;
+    const flashMessage =
+        typeof location.state === 'object' && location.state && 'flashMessage' in location.state
+            ? String(location.state.flashMessage)
+            : null;
 
     async function handleProjectDelete() {
         await handleDeleteProject(parsedProjectId);
@@ -226,7 +227,9 @@ export function ProjectDetailPage() {
                 {values.map((value) => (
                     <span key={value} className="dependency-pill">
                         <span className="dependency-pill-code">{value}</span>
-                        {taskLookup.get(value) ? <span className="dependency-pill-name">{taskLookup.get(value)}</span> : null}
+                        {taskLookup.get(value) ? (
+                            <span className="dependency-pill-name">{taskLookup.get(value)}</span>
+                        ) : null}
                     </span>
                 ))}
             </div>
@@ -481,7 +484,9 @@ export function ProjectDetailPage() {
                                 <Card.Body>
                                     <div className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center mb-3">
                                         <div>
-                                            <p className="text-uppercase small text-body-secondary mb-1">Schedule View</p>
+                                            <p className="text-uppercase small text-body-secondary mb-1">
+                                                Schedule View
+                                            </p>
                                             <h2 className="h5 mb-0">Gantt-style timeline</h2>
                                         </div>
                                         <p className="mb-0 small text-body-secondary">
@@ -509,10 +514,14 @@ export function ProjectDetailPage() {
                                             <div key={task.TaskUID} className="gantt-row">
                                                 <div
                                                     className={`gantt-label ${task.IsSummary ? 'gantt-label-summary' : ''}`}
-                                                    style={{ paddingLeft: `${Math.max(0, task.OutlineLevel - 1) * 1.1}rem` }}
+                                                    style={{
+                                                        paddingLeft: `${Math.max(0, task.OutlineLevel - 1) * 1.1}rem`,
+                                                    }}
                                                 >
                                                     <div className="d-flex align-items-center gap-2 flex-wrap">
-                                                        {task.WBS ? <span className="gantt-wbs">{task.WBS}</span> : null}
+                                                        {task.WBS ? (
+                                                            <span className="gantt-wbs">{task.WBS}</span>
+                                                        ) : null}
                                                         <span>{task.TaskName}</span>
                                                         {task.IsSummary ? (
                                                             <Badge bg="warning" text="dark">
@@ -533,11 +542,17 @@ export function ProjectDetailPage() {
                                                         />
                                                     ))}
                                                     {task.IsMilestone && !task.IsSummary ? (
-                                                        <div className="gantt-milestone" style={{ left: `${leftPercent}%` }} />
+                                                        <div
+                                                            className="gantt-milestone"
+                                                            style={{ left: `${leftPercent}%` }}
+                                                        />
                                                     ) : (
                                                         <div
                                                             className={`gantt-bar ${task.IsSummary ? 'gantt-bar-summary' : ''}`}
-                                                            style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}
+                                                            style={{
+                                                                left: `${leftPercent}%`,
+                                                                width: `${widthPercent}%`,
+                                                            }}
                                                         />
                                                     )}
                                                 </div>
@@ -588,8 +603,8 @@ export function ProjectDetailPage() {
                                 <h2 className="h5 mb-0">Project task plan</h2>
                                 {!isOwner ? (
                                     <p className="mb-0 small text-body-secondary">
-                                        You can view the full imported project here. Editing still follows ownership
-                                        and assignment rules.
+                                        You can view the full imported project here. Editing still follows ownership and
+                                        assignment rules.
                                     </p>
                                 ) : null}
                             </div>
@@ -625,7 +640,9 @@ export function ProjectDetailPage() {
                                             <td>
                                                 <div
                                                     className={task.IsSummary ? 'fw-semibold' : ''}
-                                                    style={{ paddingLeft: `${Math.max(0, task.OutlineLevel - 1) * 1.25}rem` }}
+                                                    style={{
+                                                        paddingLeft: `${Math.max(0, task.OutlineLevel - 1) * 1.25}rem`,
+                                                    }}
                                                 >
                                                     <div className="d-flex align-items-center gap-2 flex-wrap">
                                                         {task.WBS ? (

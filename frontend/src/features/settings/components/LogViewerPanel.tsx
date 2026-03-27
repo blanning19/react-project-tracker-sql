@@ -66,7 +66,12 @@ export function LogViewerPanel({ currentUserName }: LogViewerPanelProps) {
                         <Badge bg={errorCount > 0 ? 'danger' : 'secondary'}>
                             {errorCount} error{errorCount === 1 ? '' : 's'}
                         </Badge>
-                        <Button variant="outline-secondary" size="sm" onClick={() => void loadLogFile()} disabled={isLoading}>
+                        <Button
+                            variant="outline-secondary"
+                            size="sm"
+                            onClick={() => void loadLogFile()}
+                            disabled={isLoading}
+                        >
                             Refresh
                         </Button>
                     </div>

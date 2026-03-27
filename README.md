@@ -32,6 +32,8 @@ react-project-tracker-sql/
 - Bootstrap utility classes plus custom CSS
 - ESLint flat config
 - Prettier for formatting
+- Vitest for frontend unit tests
+- Playwright for frontend end-to-end smoke tests
 
 ### Backend
 
@@ -43,6 +45,7 @@ react-project-tracker-sql/
 - Microsoft Project XML import endpoint
 - Python virtual environment in `backend/.venv`
 - Ruff configuration in `backend/pyproject.toml`
+- pytest for backend automated tests
 
 ## Architecture Overview
 
@@ -162,6 +165,17 @@ XML note:
 
 - these XML files are example Microsoft Project XML documents, not extracted binary `.mpp` payloads
 - Microsoft Project can export and re-open this XML interchange format, which makes it a practical upload target for the app
+
+## FastAPI Docs
+
+FastAPI generates OpenAPI documentation automatically from route definitions plus the Pydantic request and response models.
+
+Built-in docs URLs:
+
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- Raw OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+
+This repo now also adds route summaries and tags so the generated docs are grouped more clearly.
 
 ## Repository Structure
 
@@ -286,14 +300,19 @@ npm run frontend:install
 npm run frontend:dev
 npm run frontend:build
 npm run frontend:lint
+npm run frontend:format:check
+npm run frontend:test
+npm run frontend:test:e2e
 
 npm run backend:venv
 npm run backend:install
 npm run backend:seed
 npm run backend:dev
+npm run backend:start
 npm run backend:lint
 npm run backend:format:check
 npm run backend:format
+npm run backend:test
 ```
 
 From `frontend/`:
@@ -303,6 +322,9 @@ npm run dev
 npm run build
 npm run lint
 npm run format
+npm run format:check
+npm run test
+npm run test:e2e
 ```
 
 ### What These Commands Do
@@ -311,20 +333,25 @@ npm run format
 - `npm run frontend:dev` starts the Vite development server for the React app
 - `npm run frontend:build` creates a production frontend build and catches build-time issues
 - `npm run frontend:lint` runs ESLint on the frontend code
+- `npm run frontend:format:check` checks whether frontend files match Prettier formatting rules without rewriting files
+- `npm run frontend:test` runs frontend unit tests with Vitest
+- `npm run frontend:test:e2e` runs frontend end-to-end smoke tests with Playwright
 - `npm run backend:venv` creates the Python virtual environment in `backend/.venv`
 - `npm run backend:install` installs the backend package and dev tools into `backend/.venv`
 - `npm run backend:seed` rebuilds the local schema and inserts sample data
 - `npm run backend:dev` starts the FastAPI backend with reload enabled
+- `npm run backend:start` starts the FastAPI backend without reload, which is useful for stable scripted runs
 - `npm run backend:lint` runs Ruff lint checks on the backend Python code
 - `npm run backend:format:check` checks whether backend Python files match Ruff formatting rules without rewriting files
 - `npm run backend:format` rewrites backend Python files to match Ruff formatting rules
+- `npm run backend:test` runs backend automated tests with pytest
 - `npm run check` runs the main pre-commit validation flow for the repo
 
 Formatting note:
 
 - use `npm run backend:format:check` when you want to verify formatting
 - use `npm run backend:format` when you want Ruff to fix formatting for you
-- `npm run check` includes `backend:format:check`, so it will fail if backend files need formatting
+- `npm run check` includes both frontend and backend formatting checks, so it will fail if files need formatting
 
 ## Validation Workflow
 
@@ -337,17 +364,23 @@ npm run check
 That command runs:
 
 - frontend ESLint
+- frontend Prettier check
+- frontend Vitest unit tests
 - frontend production build with Vite
 - backend Ruff lint checks
 - backend Ruff format checks
+- backend pytest
 
 If you want to run them individually:
 
 ```powershell
 npm run frontend:lint
+npm run frontend:format:check
+npm run frontend:test
 npm run frontend:build
 npm run backend:lint
 npm run backend:format:check
+npm run backend:test
 ```
 
 For backend formatting fixes:
@@ -356,17 +389,21 @@ For backend formatting fixes:
 npm run backend:format
 ```
 
+For Playwright setup and smoke tests:
+
+```powershell
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
 Current testing status:
 
-- frontend automated tests are not set up yet
-- backend automated tests are not set up yet
+- frontend unit tests run with Vitest
+- frontend end-to-end smoke coverage is available with Playwright
+- backend automated tests run with pytest
 - `vite build` is a build verification step, not a test suite
 - Ruff is a linter and formatter, not a test runner
-
-The next recommended additions are:
-
-- `pytest` for FastAPI route, schema, and CRUD tests
-- `vitest` for frontend utility and component tests
 
 ## App URLs
 
