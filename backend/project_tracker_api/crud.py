@@ -1,5 +1,5 @@
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import func, select
@@ -220,16 +220,26 @@ def import_project(db: Session, imported_project: ImportedProject) -> schemas.Pr
         extra={"projectUID": project.ProjectUID, "sourceFileName": imported_project.source_file_name},
     )
     serialized_project = serialize_project(get_project(db, project.ProjectUID))
-    record_import_event(
-        db,
-        source_file_name=imported_project.source_file_name,
-        imported_by=imported_project.imported_by,
-        status="Succeeded",
-        project_uid=serialized_project.ProjectUID,
-        project_name=serialized_project.ProjectName,
-        task_count=len(serialized_project.tasks),
-        message="Project XML imported successfully.",
-    )
+    try:
+        record_import_event(
+            db,
+            source_file_name=imported_project.source_file_name,
+            imported_by=imported_project.imported_by,
+            status="Succeeded",
+            project_uid=serialized_project.ProjectUID,
+            project_name=serialized_project.ProjectName,
+            task_count=len(serialized_project.tasks),
+            message="Project XML imported successfully.",
+        )
+    except Exception:
+        logger.exception(
+            "Project import succeeded but recording the import event failed.",
+            extra={
+                "projectUID": serialized_project.ProjectUID,
+                "sourceFileName": imported_project.source_file_name,
+                "importedBy": imported_project.imported_by,
+            },
+        )
     return serialized_project
 
 
@@ -332,7 +342,9 @@ def get_or_create_settings(db: Session, user_id: str) -> models.UserSetting:
     setting = db.get(models.UserSetting, user_id)
     if setting:
         return setting
+    settings = get_settings()
     setting = models.UserSetting(user_id=user_id)
+    setting.current_user_name = settings.default_user_name
     db.add(setting)
     commit_with_rollback(db, "Failed to create default settings.", user_id=user_id)
     db.refresh(setting)
@@ -398,6 +410,24 @@ def parse_log_level(line: str) -> str:
 
 
 def read_log_file(log_file_path: str | None, max_lines: int = 400) -> schemas.LogFileRead:
+    return read_log_file_with_context(log_file_path, max_lines=max_lines, around_timestamp=None)
+
+
+def parse_log_timestamp(line: str) -> datetime | None:
+    timestamp_token = line[:23]
+    try:
+        return datetime.strptime(timestamp_token, "%Y-%m-%d %H:%M:%S,%f")
+    except ValueError:
+        return None
+
+
+def read_log_file_with_context(
+    log_file_path: str | None,
+    *,
+    max_lines: int = 400,
+    around_timestamp: datetime | None,
+    window_seconds: int = 180,
+) -> schemas.LogFileRead:
     if not log_file_path:
         return schemas.LogFileRead(filePath=None, lines=[])
 
@@ -408,10 +438,31 @@ def read_log_file(log_file_path: str | None, max_lines: int = 400) -> schemas.Lo
     content = path.read_text(encoding="utf-8", errors="replace").splitlines()
     tail = content[-max_lines:]
     starting_line = max(1, len(content) - len(tail) + 1)
-    lines = [
-        schemas.LogLineRead(lineNumber=starting_line + index, level=parse_log_level(line), content=line)
-        for index, line in enumerate(tail)
-    ]
+    context_start = around_timestamp - timedelta(seconds=window_seconds) if around_timestamp else None
+    context_end = around_timestamp + timedelta(seconds=window_seconds) if around_timestamp else None
+    lines = []
+    for index, line in enumerate(tail):
+        line_timestamp = parse_log_timestamp(line)
+        is_context_match = (
+            around_timestamp is not None
+            and line_timestamp is not None
+            and context_start is not None
+            and context_end is not None
+            and context_start <= line_timestamp <= context_end
+        )
+        lines.append(
+            schemas.LogLineRead(
+                lineNumber=starting_line + index,
+                level=parse_log_level(line),
+                timestamp=line_timestamp,
+                isContextMatch=is_context_match,
+                content=line,
+            )
+        )
+
+    if around_timestamp and any(line.isContextMatch for line in lines):
+        lines = [line for line in lines if line.isContextMatch]
+
     return schemas.LogFileRead(filePath=str(path), lines=lines)
 
 
@@ -426,6 +477,8 @@ def serialize_import_event(import_event: models.ImportEvent) -> schemas.ImportEv
         projectName=import_event.project_name,
         taskCount=import_event.task_count,
         message=import_event.message,
+        failureReason=import_event.failure_reason,
+        technicalDetails=import_event.technical_details,
     )
 
 
@@ -439,6 +492,8 @@ def record_import_event(
     project_name: str,
     task_count: int,
     message: str,
+    failure_reason: str = "",
+    technical_details: str = "",
 ) -> None:
     import_event = models.ImportEvent(
         source_file_name=source_file_name,
@@ -448,6 +503,8 @@ def record_import_event(
         project_name=project_name,
         task_count=task_count,
         message=message,
+        failure_reason=failure_reason,
+        technical_details=technical_details,
     )
     db.add(import_event)
     commit_with_rollback(
