@@ -1,4 +1,5 @@
-﻿import { Card, Form } from 'react-bootstrap';
+import { Card, Form } from 'react-bootstrap';
+import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { useThemeSettings } from '../theme/ThemeProvider';
 
 export function SettingsPanel() {
@@ -19,7 +20,7 @@ export function SettingsPanel() {
                 <div className="settings-stack">
                     <div>
                         <p className="mb-1">
-                            <strong>Current User:</strong> {settings?.currentUserName ?? 'Ava Patel'}
+                            <strong>Current User:</strong> {settings?.currentUserName ?? DEFAULT_USER_NAME}
                         </p>
                         <p className="mb-0 text-body-secondary small">
                             Theme and sorting preferences are stored against this account profile.

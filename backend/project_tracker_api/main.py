@@ -1,6 +1,7 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -101,6 +102,11 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
     async def import_project(user_name: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
         file_name = file.filename or "imported-project.xml"
         if not file_name.lower().endswith(".xml"):
+            failure_reason = "Upload was not an XML file."
+            logger.warning(
+                "Project import rejected because the uploaded file was not XML.",
+                extra={"userName": user_name, "sourceFileName": file_name},
+            )
             crud.record_import_event(
                 db,
                 source_file_name=file_name,
@@ -110,11 +116,18 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
                 project_name="",
                 task_count=0,
                 message="Upload a Microsoft Project XML export (.xml).",
+                failure_reason=failure_reason,
+                technical_details="Expected a file with the .xml extension.",
             )
             raise HTTPException(status_code=400, detail="Upload a Microsoft Project XML export (.xml).")
 
         file_bytes = await file.read()
         if not file_bytes:
+            failure_reason = "The uploaded XML file was empty."
+            logger.warning(
+                "Project import rejected because the uploaded XML file was empty.",
+                extra={"userName": user_name, "sourceFileName": file_name},
+            )
             crud.record_import_event(
                 db,
                 source_file_name=file_name,
@@ -124,12 +137,19 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
                 project_name="",
                 task_count=0,
                 message="The uploaded file is empty.",
+                failure_reason=failure_reason,
+                technical_details="No bytes were received from the uploaded file.",
             )
             raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
         try:
             imported_project = parse_project_xml(file_bytes, file_name, imported_by=user_name)
         except ValueError as exc:
+            failure_reason = "The XML file could not be parsed as a Microsoft Project export."
+            logger.warning(
+                "Project import validation failed.",
+                extra={"userName": user_name, "sourceFileName": file_name, "error": str(exc)},
+            )
             crud.record_import_event(
                 db,
                 source_file_name=file_name,
@@ -139,6 +159,8 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
                 project_name="",
                 task_count=0,
                 message=str(exc),
+                failure_reason=failure_reason,
+                technical_details=str(exc),
             )
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -257,9 +279,15 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
     @app.get(
         "/api/logs/current", response_model=schemas.LogFileRead, tags=["settings"], summary="Read the current log file"
     )
-    def get_current_log(user_name: str, db: Session = Depends(get_db)):
+    def get_current_log(user_name: str, around_timestamp: str | None = None, db: Session = Depends(get_db)):
         ensure_admin_access(db, user_name, require_log_access=True)
-        return crud.read_log_file(settings.log_file_path)
+        parsed_timestamp = None
+        if around_timestamp:
+            try:
+                parsed_timestamp = datetime.fromisoformat(around_timestamp.replace("Z", "+00:00")).replace(tzinfo=None)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail="around_timestamp must be a valid ISO timestamp.") from exc
+        return crud.read_log_file_with_context(settings.log_file_path, around_timestamp=parsed_timestamp)
 
     @app.get(
         "/api/admin/environment",

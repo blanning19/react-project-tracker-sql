@@ -1,5 +1,6 @@
 import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../../shared/api/http';
+import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { ProjectRecord, SortDirection, ThemeMode, UserSettings } from '../../../shared/types/models';
 
 interface ThemeContextValue {
@@ -12,7 +13,7 @@ interface ThemeContextValue {
 const DEFAULT_USER_ID = 'demo-user';
 const defaultSettings: UserSettings = {
     userId: DEFAULT_USER_ID,
-    currentUserName: 'Ava Patel',
+    currentUserName: DEFAULT_USER_NAME,
     theme: 'light',
     dashboardSortField: 'Finish',
     dashboardSortDirection: 'asc',

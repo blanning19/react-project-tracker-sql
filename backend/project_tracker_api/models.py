@@ -3,7 +3,10 @@ from datetime import date, datetime
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from .config import get_settings
 from .database import Base
+
+DEFAULT_USER_NAME = get_settings().default_user_name
 
 
 class Project(Base):
@@ -57,7 +60,7 @@ class UserSetting(Base):
     __tablename__ = "user_settings"
 
     user_id: Mapped[str] = mapped_column(String(120), primary_key=True)
-    current_user_name: Mapped[str] = mapped_column(String(150), nullable=False, default="Ava Patel")
+    current_user_name: Mapped[str] = mapped_column(String(150), nullable=False, default=DEFAULT_USER_NAME)
     theme: Mapped[str] = mapped_column(String(10), nullable=False, default="light")
     dashboard_sort_field: Mapped[str] = mapped_column(String(50), nullable=False, default="Finish")
     dashboard_sort_direction: Mapped[str] = mapped_column(String(10), nullable=False, default="asc")
@@ -92,6 +95,8 @@ class ImportEvent(Base):
     project_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     task_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    failure_reason: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    technical_details: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
 
 class UserAccess(Base):

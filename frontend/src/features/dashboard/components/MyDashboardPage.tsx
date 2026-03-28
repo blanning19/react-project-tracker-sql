@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Alert, Badge, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
@@ -19,7 +20,7 @@ export function MyDashboardPage() {
     const { settings, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
     const { projects, isLoading, error } = useProjectData(settings);
 
-    const currentUserName = settings?.currentUserName ?? 'Ava Patel';
+    const currentUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
     const normalizedUserName = currentUserName.toLowerCase();
 
     const myProjects = useMemo(

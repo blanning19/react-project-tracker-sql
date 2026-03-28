@@ -1,7 +1,10 @@
 from datetime import date, datetime, timedelta
 
+from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .models import ImportEvent, Manager, Project, Task, TeamMember, UserAccess, UserSetting
+
+settings = get_settings()
 
 PROJECTS = [
     {
@@ -178,6 +181,7 @@ TASKS = [
 ]
 
 TEAM_MEMBERS = [
+    {"member_id": 0, "display_name": settings.default_user_name},
     {"member_id": 1, "display_name": "Ava Patel"},
     {"member_id": 2, "display_name": "Jordan Lee"},
     {"member_id": 3, "display_name": "Mateo Gomez"},
@@ -186,6 +190,7 @@ TEAM_MEMBERS = [
 ]
 
 MANAGERS = [
+    {"manager_id": 0, "display_name": settings.default_user_name},
     {"manager_id": 1, "display_name": "Ava Patel"},
     {"manager_id": 2, "display_name": "Jordan Lee"},
     {"manager_id": 3, "display_name": "Mateo Gomez"},
@@ -194,11 +199,18 @@ MANAGERS = [
 
 USER_ACCESS = [
     {
-        "user_name": "Ava Patel",
+        "user_name": settings.admin_user_name,
         "role": "Admin",
         "can_view_admin": True,
         "can_view_logs": True,
         "notes": "Default workspace admin account.",
+    },
+    {
+        "user_name": "Ava Patel",
+        "role": "Admin",
+        "can_view_admin": True,
+        "can_view_logs": True,
+        "notes": "Secondary admin account for workspace oversight.",
     },
     {
         "user_name": "Jordan Lee",
@@ -218,7 +230,6 @@ USER_ACCESS = [
 
 IMPORT_EVENTS = [
     {
-        "import_event_id": 1,
         "created_at": datetime.utcnow() - timedelta(days=2),
         "source_file_name": "advanced-product-launch.xml",
         "imported_by": "Ava Patel",
@@ -227,9 +238,10 @@ IMPORT_EVENTS = [
         "project_name": "ERP Modernization",
         "task_count": 6,
         "message": "Project XML imported successfully.",
+        "failure_reason": "",
+        "technical_details": "",
     },
     {
-        "import_event_id": 2,
         "created_at": datetime.utcnow() - timedelta(days=1, hours=3),
         "source_file_name": "client-portal-rollout.xml",
         "imported_by": "Jordan Lee",
@@ -238,9 +250,10 @@ IMPORT_EVENTS = [
         "project_name": "Client Portal Rollout",
         "task_count": 2,
         "message": "Project XML imported successfully.",
+        "failure_reason": "",
+        "technical_details": "",
     },
     {
-        "import_event_id": 3,
         "created_at": datetime.utcnow() - timedelta(hours=6),
         "source_file_name": "invalid-plan.txt",
         "imported_by": "Ava Patel",
@@ -249,12 +262,14 @@ IMPORT_EVENTS = [
         "project_name": "",
         "task_count": 0,
         "message": "Upload a Microsoft Project XML export (.xml).",
+        "failure_reason": "Upload was not an XML file.",
+        "technical_details": "Expected a Microsoft Project XML export with a .xml extension.",
     },
 ]
 
 
 def build_additional_projects() -> list[dict[str, object]]:
-    managers = ["Ava Patel", "Jordan Lee", "Mateo Gomez", "Taylor Brooks"]
+    managers = [settings.default_user_name, "Ava Patel", "Jordan Lee", "Mateo Gomez", "Taylor Brooks"]
     statuses = ["Not Started", "On Track", "In Progress", "At Risk"]
     priorities = ["Low", "Medium", "High"]
     projects: list[dict[str, object]] = []
@@ -295,11 +310,12 @@ def seed() -> None:
         session.add_all(TeamMember(**member) for member in TEAM_MEMBERS)
         session.add_all(Manager(**manager) for manager in MANAGERS)
         session.add_all(UserAccess(**access) for access in USER_ACCESS)
+        session.flush()
         session.add_all(ImportEvent(**event) for event in IMPORT_EVENTS)
         session.add(
             UserSetting(
                 user_id="demo-user",
-                current_user_name="Ava Patel",
+                current_user_name=settings.default_user_name,
                 theme="light",
                 dashboard_sort_field="Finish",
                 dashboard_sort_direction="asc",

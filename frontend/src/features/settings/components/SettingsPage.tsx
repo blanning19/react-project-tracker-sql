@@ -1,4 +1,5 @@
 import { Col, Container, Row, Spinner } from 'react-bootstrap';
+import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { SettingsPanel } from './SettingsPanel';
 import { useThemeSettings } from '../theme/ThemeProvider';
 
@@ -22,7 +23,7 @@ export function SettingsPage() {
                         <h1 className="display-6 fw-semibold mb-2">Manage your workspace preferences.</h1>
                         <p className="mb-0 text-body-secondary">
                             Theme mode and saved dashboard sort preferences for{' '}
-                            {settings?.currentUserName ?? 'Ava Patel'} live here now.
+                            {settings?.currentUserName ?? DEFAULT_USER_NAME} live here now.
                         </p>
                     </div>
                 </Col>

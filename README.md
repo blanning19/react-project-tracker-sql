@@ -273,8 +273,14 @@ backend/.env
 Then set at least:
 
 - `PROJECT_TRACKER_DATABASE_URL`
+- `PROJECT_TRACKER_DEFAULT_USER_NAME`
 - optional CORS overrides if needed
 - optional `PROJECT_TRACKER_ADMIN_USER_NAME` if you want a different default admin account
+
+Frontend fallback note:
+
+- `frontend/.env.example` includes `VITE_DEFAULT_USER_NAME` for the frontend fallback display/user context before settings load
+- the frontend cannot read `backend/.env` directly, so backend and frontend each need their own environment variable for this value
 
 ### 4. Seed Local Development Data
 

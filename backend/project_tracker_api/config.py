@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     cors_origins: Annotated[List[str], NoDecode] = ["http://127.0.0.1:5173", "http://localhost:5173"]
     log_level: str = "INFO"
     log_file_path: str | None = str(BASE_DIR / "logs" / "project_tracker_api.log")
-    admin_user_name: str = "Ava Patel"
+    default_user_name: str = "Brad Lanning"
+    admin_user_name: str = "Brad Lanning"
 
     @field_validator("cors_origins", mode="before")
     @classmethod

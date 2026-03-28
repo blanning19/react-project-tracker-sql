@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+    <Name>Malformed Sample Project</Name>
+    <Title>Broken Import Test</Title>
+    <Manager>Brad Lanning</Manager>
+    <Company>Example Co</Company>
+    <StartDate>2026-03-27T08:00:00</StartDate>
+    <Tasks>
+        <Task>
+            <UID>1</UID>
+            <ID>1</ID>
+            <Name>Project Kickoff</Name>
+            <Duration>PT8H0M0S</Duration>
+            <Start>2026-03-27T08:00:00</Start>
+            <Finish>2026-03-27T17:00:00</Finish>
+        </Task>
+        <Task>
+            <UID>2</UID>
+            <ID>2</ID>
+            <Name>Requirements Gathering</Name>
+            <Duration>PT16H0M0S</Duration>
+            <Start>2026-03-28T08:00:00</Start>
+            <Finish>2026-03-29T17:00:00</Finish>
+        <!-- Intentionally malformed below:
+             - Missing closing </Task> for Task 2
+             - Mismatched closing tag </Resources>
+             - Invalid raw ampersand in task name
+        -->
+        <Task>
+            <UID>3</UID>
+            <ID>3</ID>
+            <Name>Design & Review</Name>
+            <Duration>PT24H0M0S</Duration>
+            <Start>2026-03-30T08:00:00</Start>
+            <Finish>2026-04-01T17:00:00</Finish>
+        </Resources>
+    </Tasks>
+</Project>

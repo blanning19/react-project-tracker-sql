@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../../shared/api/http';
+import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { ProjectPayload, ProjectRecord, TaskPayload, TaskRecord, UserSettings } from '../../../shared/types/models';
 
 export function useProjectData(settings: UserSettings | null) {
@@ -70,7 +71,7 @@ export function useProjectData(settings: UserSettings | null) {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const importUserName = settings?.currentUserName ?? 'Ava Patel';
+            const importUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
             const importedProject = await apiFetch<ProjectRecord>(
                 `/projects/import?user_name=${encodeURIComponent(importUserName)}`,
                 {

@@ -5,6 +5,7 @@ import { LogFileRecord } from '../../../shared/types/models';
 
 interface LogViewerPanelProps {
     currentUserName: string;
+    aroundTimestamp?: string | null;
 }
 
 function getVariant(level: string): 'danger' | 'warning' | 'info' | 'secondary' {
@@ -21,7 +22,7 @@ function getVariant(level: string): 'danger' | 'warning' | 'info' | 'secondary' 
     }
 }
 
-export function LogViewerPanel({ currentUserName }: LogViewerPanelProps) {
+export function LogViewerPanel({ currentUserName, aroundTimestamp = null }: LogViewerPanelProps) {
     const [logFile, setLogFile] = useState<LogFileRecord | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,8 +31,11 @@ export function LogViewerPanel({ currentUserName }: LogViewerPanelProps) {
         [logFile],
     );
     const requestPath = useMemo(
-        () => `/logs/current?user_name=${encodeURIComponent(currentUserName)}`,
-        [currentUserName],
+        () =>
+            aroundTimestamp
+                ? `/logs/current?user_name=${encodeURIComponent(currentUserName)}&around_timestamp=${encodeURIComponent(aroundTimestamp)}`
+                : `/logs/current?user_name=${encodeURIComponent(currentUserName)}`,
+        [aroundTimestamp, currentUserName],
     );
 
     const loadLogFile = useCallback(async () => {
@@ -59,7 +63,9 @@ export function LogViewerPanel({ currentUserName }: LogViewerPanelProps) {
                         <p className="text-uppercase small text-body-secondary mb-1">Application Log</p>
                         <h2 className="h5 mb-1">Current backend log file</h2>
                         <p className="mb-0 text-body-secondary small">
-                            Recent log lines are shown here with warning and error highlighting.
+                            {aroundTimestamp
+                                ? 'Showing log lines near the selected failed import event.'
+                                : 'Recent log lines are shown here with warning and error highlighting.'}
                         </p>
                     </div>
                     <div className="d-flex gap-2 align-items-center">
@@ -104,7 +110,9 @@ export function LogViewerPanel({ currentUserName }: LogViewerPanelProps) {
                             <div
                                 key={line.lineNumber}
                                 className={`d-flex gap-3 py-2 px-2 rounded-2 mb-1 ${
-                                    line.level === 'ERROR' || line.level === 'CRITICAL'
+                                    line.isContextMatch
+                                        ? 'border border-primary-subtle'
+                                        : line.level === 'ERROR' || line.level === 'CRITICAL'
                                         ? 'bg-danger-subtle'
                                         : line.level === 'WARNING'
                                           ? 'bg-warning-subtle'

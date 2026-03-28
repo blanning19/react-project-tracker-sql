@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { useProjectData } from '../../dashboard/hooks/useProjectData';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { TaskForm } from '../../tasks/components/TaskForm';
+import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 import { ProjectForm } from './ProjectForm';
@@ -50,7 +51,7 @@ export function ProjectDetailPage() {
     );
 
     const projectForForm = editingProject ?? project ?? null;
-    const currentUserName = settings?.currentUserName ?? 'Ava Patel';
+    const currentUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
     const isOwner = project?.ProjectManager.toLowerCase() === currentUserName.toLowerCase();
     const visibleTasks = useMemo(() => project?.tasks ?? [], [project]);
     const phaseSummaries = useMemo(() => {

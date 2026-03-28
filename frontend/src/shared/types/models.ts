@@ -22,6 +22,8 @@ export interface ManagerRecord {
 export interface LogLineRecord {
     lineNumber: number;
     level: string;
+    timestamp: string | null;
+    isContextMatch: boolean;
     content: string;
 }
 
@@ -40,6 +42,8 @@ export interface ImportEventRecord {
     projectName: string;
     taskCount: number;
     message: string;
+    failureReason: string;
+    technicalDetails: string;
 }
 
 export interface ImportEventSummaryRecord {

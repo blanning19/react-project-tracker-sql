@@ -60,6 +60,42 @@ def ensure_legacy_schema_columns() -> None:
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "IsSummary" SET NOT NULL'))
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "Predecessors" SET NOT NULL'))
 
+        table_names = set(inspector.get_table_names())
+        if "import_events" in table_names:
+            import_event_columns = {column["name"] for column in inspector.get_columns("import_events")}
+            import_event_column_statements = {
+                "failure_reason": "ALTER TABLE import_events ADD COLUMN failure_reason VARCHAR(255) DEFAULT ''",
+                "technical_details": "ALTER TABLE import_events ADD COLUMN technical_details TEXT DEFAULT ''",
+            }
+            for column_name, statement in import_event_column_statements.items():
+                if column_name not in import_event_columns:
+                    logger.info('Adding missing column import_events."%s".', column_name)
+                    connection.execute(text(statement))
+
+            refreshed_import_event_columns = {
+                column["name"] for column in inspect(connection).get_columns("import_events")
+            }
+            if {"failure_reason", "technical_details"}.issubset(refreshed_import_event_columns):
+                connection.execute(text("UPDATE import_events SET failure_reason = '' WHERE failure_reason IS NULL"))
+                connection.execute(
+                    text("UPDATE import_events SET technical_details = '' WHERE technical_details IS NULL")
+                )
+                connection.execute(text("ALTER TABLE import_events ALTER COLUMN failure_reason SET NOT NULL"))
+                connection.execute(text("ALTER TABLE import_events ALTER COLUMN technical_details SET NOT NULL"))
+
+            if connection.dialect.name == "postgresql":
+                connection.execute(
+                    text(
+                        """
+                        SELECT setval(
+                            pg_get_serial_sequence('import_events', 'import_event_id'),
+                            COALESCE((SELECT MAX(import_event_id) FROM import_events), 0) + 1,
+                            false
+                        )
+                        """
+                    )
+                )
+
 
 def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()

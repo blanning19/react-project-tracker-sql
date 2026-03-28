@@ -2,6 +2,10 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .config import get_settings
+
+DEFAULT_USER_NAME = get_settings().default_user_name
+
 
 class TaskBase(BaseModel):
     ProjectUID: int
@@ -80,7 +84,7 @@ class ProjectRead(ProjectBase):
 
 
 class UserSettingsBase(BaseModel):
-    currentUserName: str = "Ava Patel"
+    currentUserName: str = DEFAULT_USER_NAME
     theme: str = "light"
     dashboardSortField: str = "Finish"
     dashboardSortDirection: str = "asc"
@@ -111,6 +115,8 @@ class ManagerRead(BaseModel):
 class LogLineRead(BaseModel):
     lineNumber: int
     level: str
+    timestamp: datetime | None = None
+    isContextMatch: bool = False
     content: str
 
 
@@ -131,6 +137,8 @@ class ImportEventRead(BaseModel):
     projectName: str
     taskCount: int
     message: str
+    failureReason: str
+    technicalDetails: str
 
 
 class ImportEventSummaryRead(BaseModel):
