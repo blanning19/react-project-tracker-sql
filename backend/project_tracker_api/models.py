@@ -85,6 +85,7 @@ class ImportEvent(Base):
 
     import_event_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     source_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     imported_by: Mapped[str] = mapped_column(String(150), nullable=False, default="Unknown")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="Succeeded")

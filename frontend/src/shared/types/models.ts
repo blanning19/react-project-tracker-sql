@@ -24,6 +24,7 @@ export interface LogLineRecord {
     level: string;
     timestamp: string | null;
     isContextMatch: boolean;
+    correlationId: string | null;
     content: string;
 }
 
@@ -35,6 +36,7 @@ export interface LogFileRecord {
 export interface ImportEventRecord {
     importEventId: number;
     createdAt: string;
+    correlationId: string;
     sourceFileName: string;
     importedBy: string;
     status: string;

@@ -2,6 +2,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,15 +101,17 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
         summary="Import a project from Microsoft Project XML",
     )
     async def import_project(user_name: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+        correlation_id = uuid4().hex
         file_name = file.filename or "imported-project.xml"
         if not file_name.lower().endswith(".xml"):
             failure_reason = "Upload was not an XML file."
             logger.warning(
                 "Project import rejected because the uploaded file was not XML.",
-                extra={"userName": user_name, "sourceFileName": file_name},
+                extra={"correlationId": correlation_id, "userName": user_name, "sourceFileName": file_name},
             )
             crud.record_import_event(
                 db,
+                correlation_id=correlation_id,
                 source_file_name=file_name,
                 imported_by=user_name,
                 status="Failed",
@@ -126,10 +129,11 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
             failure_reason = "The uploaded XML file was empty."
             logger.warning(
                 "Project import rejected because the uploaded XML file was empty.",
-                extra={"userName": user_name, "sourceFileName": file_name},
+                extra={"correlationId": correlation_id, "userName": user_name, "sourceFileName": file_name},
             )
             crud.record_import_event(
                 db,
+                correlation_id=correlation_id,
                 source_file_name=file_name,
                 imported_by=user_name,
                 status="Failed",
@@ -148,10 +152,16 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
             failure_reason = "The XML file could not be parsed as a Microsoft Project export."
             logger.warning(
                 "Project import validation failed.",
-                extra={"userName": user_name, "sourceFileName": file_name, "error": str(exc)},
+                extra={
+                    "correlationId": correlation_id,
+                    "userName": user_name,
+                    "sourceFileName": file_name,
+                    "error": str(exc),
+                },
             )
             crud.record_import_event(
                 db,
+                correlation_id=correlation_id,
                 source_file_name=file_name,
                 imported_by=user_name,
                 status="Failed",
@@ -162,9 +172,9 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
                 failure_reason=failure_reason,
                 technical_details=str(exc),
             )
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
+            raise HTTPException(status_code=400, detail=str(exc))
 
-        return crud.import_project(db, imported_project)
+        return crud.import_project(db, imported_project, correlation_id=correlation_id)
 
     @app.put(
         "/api/projects/{project_id}", response_model=schemas.ProjectRead, tags=["projects"], summary="Update a project"
@@ -279,15 +289,24 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
     @app.get(
         "/api/logs/current", response_model=schemas.LogFileRead, tags=["settings"], summary="Read the current log file"
     )
-    def get_current_log(user_name: str, around_timestamp: str | None = None, db: Session = Depends(get_db)):
+    def get_current_log(
+        user_name: str,
+        around_timestamp: str | None = None,
+        correlation_id: str | None = None,
+        db: Session = Depends(get_db),
+    ):
         ensure_admin_access(db, user_name, require_log_access=True)
         parsed_timestamp = None
         if around_timestamp:
             try:
                 parsed_timestamp = datetime.fromisoformat(around_timestamp.replace("Z", "+00:00")).replace(tzinfo=None)
-            except ValueError as exc:
-                raise HTTPException(status_code=400, detail="around_timestamp must be a valid ISO timestamp.") from exc
-        return crud.read_log_file_with_context(settings.log_file_path, around_timestamp=parsed_timestamp)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="around_timestamp must be a valid ISO timestamp.")
+        return crud.read_log_file_with_context(
+            settings.log_file_path,
+            around_timestamp=parsed_timestamp,
+            correlation_id=correlation_id.strip() if correlation_id else None,
+        )
 
     @app.get(
         "/api/admin/environment",

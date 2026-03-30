@@ -1,17 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-    Alert,
-    Badge,
-    Button,
-    Card,
-    Col,
-    Container,
-    Form,
-    Nav,
-    Row,
-    Spinner,
-    Table,
-} from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Form, Nav, Row, Spinner, Table } from 'react-bootstrap';
 import { apiFetch } from '../../../shared/api/http';
 import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import {
@@ -35,6 +23,23 @@ function formatTimestamp(value: string) {
 
 function formatRoleLabel(role: string) {
     return role.trim() || 'Viewer';
+}
+
+async function copyToClipboard(value: string) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = value;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'absolute';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
 }
 
 function getImportVariant(status: string): 'success' | 'danger' | 'secondary' {
@@ -193,6 +198,8 @@ export function AdminPage() {
     const [loadError, setLoadError] = useState<string | null>(null);
     const [isPageLoading, setIsPageLoading] = useState(true);
     const [selectedLogTimestamp, setSelectedLogTimestamp] = useState<string | null>(null);
+    const [selectedLogCorrelationId, setSelectedLogCorrelationId] = useState<string | null>(null);
+    const [copiedCorrelationId, setCopiedCorrelationId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<AdminTabKey>('imports');
     const [importFilter, setImportFilter] = useState<ImportFilterRange>('30d');
 
@@ -213,17 +220,13 @@ export function AdminPage() {
                 return;
             }
 
-            const [nextEnvironmentSummary, nextImportEvents, nextUserAccessList] = await Promise.all(
-                [
-                    apiFetch<EnvironmentSummaryRecord>(
-                        `/admin/environment?user_name=${encodeURIComponent(currentUserName)}`,
-                    ),
-                    apiFetch<ImportEventRecord[]>(
-                        `/admin/import-events?user_name=${encodeURIComponent(currentUserName)}`,
-                    ),
-                    apiFetch<UserAccessRecord[]>(`/admin/access?user_name=${encodeURIComponent(currentUserName)}`),
-                ],
-            );
+            const [nextEnvironmentSummary, nextImportEvents, nextUserAccessList] = await Promise.all([
+                apiFetch<EnvironmentSummaryRecord>(
+                    `/admin/environment?user_name=${encodeURIComponent(currentUserName)}`,
+                ),
+                apiFetch<ImportEventRecord[]>(`/admin/import-events?user_name=${encodeURIComponent(currentUserName)}`),
+                apiFetch<UserAccessRecord[]>(`/admin/access?user_name=${encodeURIComponent(currentUserName)}`),
+            ]);
 
             setEnvironmentSummary(nextEnvironmentSummary);
             setImportEvents(nextImportEvents);
@@ -253,7 +256,9 @@ export function AdminPage() {
     );
 
     const filteredImportSummary = useMemo(() => {
-        const successfulImports = filteredImportEvents.filter((importEvent) => importEvent.status === 'Succeeded').length;
+        const successfulImports = filteredImportEvents.filter(
+            (importEvent) => importEvent.status === 'Succeeded',
+        ).length;
         const failedImports = filteredFailureEvents.length;
         const lastFailure = filteredFailureEvents[0];
         return {
@@ -275,6 +280,18 @@ export function AdminPage() {
         },
         [currentUserName],
     );
+
+    const handleCopyCorrelationId = useCallback(async (correlationId: string) => {
+        try {
+            await copyToClipboard(correlationId);
+            setCopiedCorrelationId(correlationId);
+            window.setTimeout(() => {
+                setCopiedCorrelationId((currentValue) => (currentValue === correlationId ? null : currentValue));
+            }, 2000);
+        } catch {
+            setCopiedCorrelationId(null);
+        }
+    }, []);
 
     if (isLoading || isPageLoading) {
         return (
@@ -396,9 +413,7 @@ export function AdminPage() {
                                     <Form.Label className="small text-body-secondary mb-1">Date Range</Form.Label>
                                     <Form.Select
                                         value={importFilter}
-                                        onChange={(event) =>
-                                            setImportFilter(event.target.value as ImportFilterRange)
-                                        }
+                                        onChange={(event) => setImportFilter(event.target.value as ImportFilterRange)}
                                     >
                                         <option value="7d">Last 7 days</option>
                                         <option value="30d">Last 30 days</option>
@@ -421,9 +436,7 @@ export function AdminPage() {
                                     </div>
                                     <div className="border rounded-3 p-3">
                                         <div className="small text-body-secondary mb-1">Failed</div>
-                                        <div className="h4 text-danger mb-0">
-                                            {filteredImportSummary.failedImports}
-                                        </div>
+                                        <div className="h4 text-danger mb-0">{filteredImportSummary.failedImports}</div>
                                     </div>
                                     {filteredImportSummary.lastFailureMessage ? (
                                         <div className="border rounded-3 p-3 bg-danger-subtle">
@@ -440,9 +453,7 @@ export function AdminPage() {
                             <Card.Body>
                                 <div className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center mb-3">
                                     <div>
-                                        <p className="text-uppercase small text-body-secondary mb-1">
-                                            Recent Imports
-                                        </p>
+                                        <p className="text-uppercase small text-body-secondary mb-1">Recent Imports</p>
                                         <h2 className="h5 mb-0">Import history and failure detail</h2>
                                     </div>
                                     <div className="small text-body-secondary">
@@ -496,6 +507,12 @@ export function AdminPage() {
                                                             <strong>Reason:</strong>{' '}
                                                             {importEvent.failureReason || importEvent.message}
                                                         </div>
+                                                        {importEvent.correlationId ? (
+                                                            <div className="small text-body-secondary">
+                                                                <strong>Correlation ID:</strong>{' '}
+                                                                <code>{importEvent.correlationId}</code>
+                                                            </div>
+                                                        ) : null}
                                                         {importEvent.technicalDetails ? (
                                                             <div className="small text-body-secondary">
                                                                 <strong>Technical details:</strong>{' '}
@@ -503,11 +520,29 @@ export function AdminPage() {
                                                             </div>
                                                         ) : null}
                                                         <div className="d-flex flex-wrap gap-2 pt-1">
+                                                            {importEvent.correlationId ? (
+                                                                <Button
+                                                                    variant="outline-secondary"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        void handleCopyCorrelationId(
+                                                                            importEvent.correlationId,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {copiedCorrelationId === importEvent.correlationId
+                                                                        ? 'Copied'
+                                                                        : 'Copy correlation ID'}
+                                                                </Button>
+                                                            ) : null}
                                                             <Button
                                                                 variant="outline-dark"
                                                                 size="sm"
                                                                 onClick={() => {
                                                                     setSelectedLogTimestamp(importEvent.createdAt);
+                                                                    setSelectedLogCorrelationId(
+                                                                        importEvent.correlationId || null,
+                                                                    );
                                                                     setActiveTab('logs');
                                                                 }}
                                                             >
@@ -696,7 +731,10 @@ export function AdminPage() {
                                         <Button
                                             variant="outline-secondary"
                                             size="sm"
-                                            onClick={() => setSelectedLogTimestamp(null)}
+                                            onClick={() => {
+                                                setSelectedLogTimestamp(null);
+                                                setSelectedLogCorrelationId(null);
+                                            }}
                                         >
                                             Show latest log lines
                                         </Button>
@@ -705,6 +743,7 @@ export function AdminPage() {
                                 <LogViewerPanel
                                     currentUserName={currentUserName}
                                     aroundTimestamp={selectedLogTimestamp}
+                                    correlationId={selectedLogCorrelationId}
                                 />
                             </>
                         ) : (

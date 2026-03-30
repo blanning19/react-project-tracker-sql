@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Generator
 
+from fastapi import HTTPException
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -64,6 +65,7 @@ def ensure_legacy_schema_columns() -> None:
         if "import_events" in table_names:
             import_event_columns = {column["name"] for column in inspector.get_columns("import_events")}
             import_event_column_statements = {
+                "correlation_id": "ALTER TABLE import_events ADD COLUMN correlation_id VARCHAR(64) DEFAULT ''",
                 "failure_reason": "ALTER TABLE import_events ADD COLUMN failure_reason VARCHAR(255) DEFAULT ''",
                 "technical_details": "ALTER TABLE import_events ADD COLUMN technical_details TEXT DEFAULT ''",
             }
@@ -75,11 +77,13 @@ def ensure_legacy_schema_columns() -> None:
             refreshed_import_event_columns = {
                 column["name"] for column in inspect(connection).get_columns("import_events")
             }
-            if {"failure_reason", "technical_details"}.issubset(refreshed_import_event_columns):
+            if {"correlation_id", "failure_reason", "technical_details"}.issubset(refreshed_import_event_columns):
+                connection.execute(text("UPDATE import_events SET correlation_id = '' WHERE correlation_id IS NULL"))
                 connection.execute(text("UPDATE import_events SET failure_reason = '' WHERE failure_reason IS NULL"))
                 connection.execute(
                     text("UPDATE import_events SET technical_details = '' WHERE technical_details IS NULL")
                 )
+                connection.execute(text("ALTER TABLE import_events ALTER COLUMN correlation_id SET NOT NULL"))
                 connection.execute(text("ALTER TABLE import_events ALTER COLUMN failure_reason SET NOT NULL"))
                 connection.execute(text("ALTER TABLE import_events ALTER COLUMN technical_details SET NOT NULL"))
 
@@ -101,6 +105,9 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception:
         db.rollback()
         logger.exception("Database session rolled back due to an unhandled error.")

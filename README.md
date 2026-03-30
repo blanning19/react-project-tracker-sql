@@ -504,12 +504,13 @@ This is intentionally planned separately from the current hardening and test wor
 
 The Admin page includes:
 
-- a recent import history panel
-- a failed import summary
+- a tabbed Admin view for Imports, Access, Environment, and Logs
+- a recent import history panel with date-range filtering
 - user visibility and role controls
 - an environment and configuration summary
 - a current-log viewer for accounts with log visibility enabled
 - quick links to Swagger docs, OpenAPI JSON, and the backend health check
+- correlation-based import troubleshooting for failed XML uploads
 
 Admin visibility note:
 
@@ -518,6 +519,39 @@ Admin visibility note:
 - log visibility is controlled separately from general admin visibility
 - the backend reads the current file configured by `PROJECT_TRACKER_LOG_FILE_PATH`
 - warning and error lines are highlighted in the UI for faster scanning
+
+### Import Troubleshooting
+
+The Admin `Imports` tab is the main place to review project import outcomes.
+
+For failed imports, the app now stores:
+
+- a plain-language failure reason
+- technical details for admins
+- a `correlationId` for that specific import attempt
+
+The `View related log context` action uses that correlation ID to open the `Logs` tab and filter the backend log to the matching import attempt when possible. This is much more reliable than troubleshooting by timestamp alone.
+
+Typical admin workflow for a failed import:
+
+1. Open `Admin`
+2. Go to the `Imports` tab
+3. Find the failed upload row
+4. Review `Reason` and `Technical details`
+5. Click `View related log context`
+6. If needed, use `Copy correlation ID` to paste the ID into a bug report, support message, or raw log search
+
+Correlation ID note:
+
+- a correlation ID identifies one specific import attempt
+- it is useful for support/debugging even if multiple users import the same file name
+- newer import attempts include this value automatically
+
+Log-view note:
+
+- if a failed import has a correlation ID, the log viewer prefers correlation-based filtering
+- if older import history rows do not have a correlation ID, the viewer falls back to timestamp-based context
+- `npm run backend:start` can be helpful for cleaner troubleshooting because it avoids `uvicorn --reload` watcher/process confusion during debugging
 
 ## Styling Notes
 

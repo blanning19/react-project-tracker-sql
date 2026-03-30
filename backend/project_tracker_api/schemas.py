@@ -117,6 +117,7 @@ class LogLineRead(BaseModel):
     level: str
     timestamp: datetime | None = None
     isContextMatch: bool = False
+    correlationId: str | None = None
     content: str
 
 
@@ -130,6 +131,7 @@ class ImportEventRead(BaseModel):
 
     importEventId: int
     createdAt: datetime
+    correlationId: str
     sourceFileName: str
     importedBy: str
     status: str

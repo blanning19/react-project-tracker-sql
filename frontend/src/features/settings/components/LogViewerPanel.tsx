@@ -6,6 +6,7 @@ import { LogFileRecord } from '../../../shared/types/models';
 interface LogViewerPanelProps {
     currentUserName: string;
     aroundTimestamp?: string | null;
+    correlationId?: string | null;
 }
 
 function getVariant(level: string): 'danger' | 'warning' | 'info' | 'secondary' {
@@ -22,7 +23,7 @@ function getVariant(level: string): 'danger' | 'warning' | 'info' | 'secondary' 
     }
 }
 
-export function LogViewerPanel({ currentUserName, aroundTimestamp = null }: LogViewerPanelProps) {
+export function LogViewerPanel({ currentUserName, aroundTimestamp = null, correlationId = null }: LogViewerPanelProps) {
     const [logFile, setLogFile] = useState<LogFileRecord | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,13 +31,16 @@ export function LogViewerPanel({ currentUserName, aroundTimestamp = null }: LogV
         () => (logFile?.lines ?? []).filter((line) => line.level === 'ERROR' || line.level === 'CRITICAL').length,
         [logFile],
     );
-    const requestPath = useMemo(
-        () =>
-            aroundTimestamp
-                ? `/logs/current?user_name=${encodeURIComponent(currentUserName)}&around_timestamp=${encodeURIComponent(aroundTimestamp)}`
-                : `/logs/current?user_name=${encodeURIComponent(currentUserName)}`,
-        [aroundTimestamp, currentUserName],
-    );
+    const requestPath = useMemo(() => {
+        const params = new URLSearchParams({ user_name: currentUserName });
+        if (aroundTimestamp) {
+            params.set('around_timestamp', aroundTimestamp);
+        }
+        if (correlationId) {
+            params.set('correlation_id', correlationId);
+        }
+        return `/logs/current?${params.toString()}`;
+    }, [aroundTimestamp, correlationId, currentUserName]);
 
     const loadLogFile = useCallback(async () => {
         setIsLoading(true);
@@ -64,9 +68,16 @@ export function LogViewerPanel({ currentUserName, aroundTimestamp = null }: LogV
                         <h2 className="h5 mb-1">Current backend log file</h2>
                         <p className="mb-0 text-body-secondary small">
                             {aroundTimestamp
-                                ? 'Showing log lines near the selected failed import event.'
+                                ? correlationId
+                                    ? 'Showing log lines for the selected import attempt.'
+                                    : 'Showing log lines near the selected failed import event.'
                                 : 'Recent log lines are shown here with warning and error highlighting.'}
                         </p>
+                        {correlationId ? (
+                            <p className="mb-0 mt-2 text-body-secondary small">
+                                <strong>Correlation ID:</strong> <code>{correlationId}</code>
+                            </p>
+                        ) : null}
                     </div>
                     <div className="d-flex gap-2 align-items-center">
                         <Badge bg={errorCount > 0 ? 'danger' : 'secondary'}>
@@ -113,16 +124,21 @@ export function LogViewerPanel({ currentUserName, aroundTimestamp = null }: LogV
                                     line.isContextMatch
                                         ? 'border border-primary-subtle'
                                         : line.level === 'ERROR' || line.level === 'CRITICAL'
-                                        ? 'bg-danger-subtle'
-                                        : line.level === 'WARNING'
-                                          ? 'bg-warning-subtle'
-                                          : ''
+                                          ? 'bg-danger-subtle'
+                                          : line.level === 'WARNING'
+                                            ? 'bg-warning-subtle'
+                                            : ''
                                 }`}
                             >
                                 <span className="text-body-secondary small" style={{ minWidth: '3.5rem' }}>
                                     {line.lineNumber}
                                 </span>
                                 <Badge bg={getVariant(line.level)}>{line.level}</Badge>
+                                {line.correlationId ? (
+                                    <Badge bg="secondary" pill>
+                                        Import
+                                    </Badge>
+                                ) : null}
                                 <code className="small text-wrap" style={{ whiteSpace: 'pre-wrap' }}>
                                     {line.content}
                                 </code>

@@ -1,5 +1,8 @@
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
+
+from backend.project_tracker_api import crud
 
 
 def test_healthcheck_returns_ok(client):
@@ -78,6 +81,7 @@ def test_import_project_xml_creates_project_tasks_people_and_event(client):
     assert import_events[0]["status"] == "Succeeded"
     assert import_events[0]["importedBy"] == "Brad Lanning"
     assert import_events[0]["sourceFileName"] == sample_file.name
+    assert import_events[0]["correlationId"]
     assert import_events[0]["failureReason"] == ""
 
 
@@ -139,6 +143,7 @@ def test_import_project_rejects_non_xml_upload_and_records_failure(client):
 
     events_response = client.get("/api/admin/import-events", params={"user_name": "Brad Lanning"})
     event = events_response.json()[0]
+    assert event["correlationId"]
     assert event["failureReason"] == "Upload was not an XML file."
     assert event["technicalDetails"] == "Expected a file with the .xml extension."
 
@@ -185,6 +190,38 @@ def test_current_log_rejects_invalid_context_timestamp(client):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "around_timestamp must be a valid ISO timestamp."
+
+
+def test_read_log_file_with_context_prefers_matching_correlation_id(tmp_path):
+    log_file = tmp_path / "project_tracker_api.log"
+    log_file.write_text(
+        "\n".join(
+            [
+                "2026-03-30 10:00:00,000 INFO [backend.project_tracker_api.main] Project Tracker API started.",
+                (
+                    "2026-03-30 10:01:00,000 WARNING [backend.project_tracker_api.main] "
+                    "Project import rejected because the uploaded file was not XML. "
+                    '| context={"correlationId":"match-123","sourceFileName":"notes.txt","userName":"Brad Lanning"}'
+                ),
+                (
+                    "2026-03-30 10:01:01,000 WARNING [backend.project_tracker_api.main] "
+                    "Project import validation failed. "
+                    '| context={"correlationId":"other-456","sourceFileName":"broken.xml","userName":"Brad Lanning"}'
+                ),
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    response = crud.read_log_file_with_context(
+        str(log_file),
+        around_timestamp=datetime(2026, 3, 30, 10, 1, 0),
+        correlation_id="match-123",
+    )
+
+    assert len(response.lines) == 1
+    assert response.lines[0].correlationId == "match-123"
+    assert "notes.txt" in response.lines[0].content
 
 
 def test_admin_environment_and_access_list_require_admin(client):

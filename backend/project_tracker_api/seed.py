@@ -231,6 +231,7 @@ USER_ACCESS = [
 IMPORT_EVENTS = [
     {
         "created_at": datetime.utcnow() - timedelta(days=2),
+        "correlation_id": "seed-success-advanced-launch",
         "source_file_name": "advanced-product-launch.xml",
         "imported_by": "Ava Patel",
         "status": "Succeeded",
@@ -243,6 +244,7 @@ IMPORT_EVENTS = [
     },
     {
         "created_at": datetime.utcnow() - timedelta(days=1, hours=3),
+        "correlation_id": "seed-success-client-portal",
         "source_file_name": "client-portal-rollout.xml",
         "imported_by": "Jordan Lee",
         "status": "Succeeded",
@@ -255,6 +257,7 @@ IMPORT_EVENTS = [
     },
     {
         "created_at": datetime.utcnow() - timedelta(hours=6),
+        "correlation_id": "seed-failure-invalid-extension",
         "source_file_name": "invalid-plan.txt",
         "imported_by": "Ava Patel",
         "status": "Failed",

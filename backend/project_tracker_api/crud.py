@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -151,7 +152,9 @@ def ensure_team_members_exist(db: Session, names: list[str]) -> None:
         next_member_id += 1
 
 
-def import_project(db: Session, imported_project: ImportedProject) -> schemas.ProjectRead:
+def import_project(
+    db: Session, imported_project: ImportedProject, *, correlation_id: str | None = None
+) -> schemas.ProjectRead:
     project_uid = get_next_project_uid(db)
     ensure_manager_exists(db, imported_project.manager)
 
@@ -217,12 +220,17 @@ def import_project(db: Session, imported_project: ImportedProject) -> schemas.Pr
     db.refresh(project)
     logger.info(
         "Imported project from Microsoft Project XML.",
-        extra={"projectUID": project.ProjectUID, "sourceFileName": imported_project.source_file_name},
+        extra={
+            "correlationId": correlation_id or "",
+            "projectUID": project.ProjectUID,
+            "sourceFileName": imported_project.source_file_name,
+        },
     )
     serialized_project = serialize_project(get_project(db, project.ProjectUID))
     try:
         record_import_event(
             db,
+            correlation_id=correlation_id or "",
             source_file_name=imported_project.source_file_name,
             imported_by=imported_project.imported_by,
             status="Succeeded",
@@ -235,6 +243,7 @@ def import_project(db: Session, imported_project: ImportedProject) -> schemas.Pr
         logger.exception(
             "Project import succeeded but recording the import event failed.",
             extra={
+                "correlationId": correlation_id or "",
                 "projectUID": serialized_project.ProjectUID,
                 "sourceFileName": imported_project.source_file_name,
                 "importedBy": imported_project.imported_by,
@@ -421,11 +430,47 @@ def parse_log_timestamp(line: str) -> datetime | None:
         return None
 
 
+def extract_log_context(line: str) -> dict[str, object]:
+    marker = "| context="
+    if marker not in line:
+        return {}
+
+    _, _, serialized_context = line.partition(marker)
+    serialized_context = serialized_context.strip()
+    if not serialized_context:
+        return {}
+
+    try:
+        parsed_context = json.loads(serialized_context)
+    except json.JSONDecodeError:
+        return {}
+
+    if isinstance(parsed_context, dict):
+        return parsed_context
+    return {}
+
+
+def extract_correlation_id(line: str) -> str | None:
+    context = extract_log_context(line)
+    correlation_id = context.get("correlationId")
+    if isinstance(correlation_id, str) and correlation_id:
+        return correlation_id
+
+    nested_context = context.get("context")
+    if isinstance(nested_context, dict):
+        nested_correlation_id = nested_context.get("correlation_id") or nested_context.get("correlationId")
+        if isinstance(nested_correlation_id, str) and nested_correlation_id:
+            return nested_correlation_id
+
+    return None
+
+
 def read_log_file_with_context(
     log_file_path: str | None,
     *,
     max_lines: int = 400,
     around_timestamp: datetime | None,
+    correlation_id: str | None = None,
     window_seconds: int = 180,
 ) -> schemas.LogFileRead:
     if not log_file_path:
@@ -443,7 +488,8 @@ def read_log_file_with_context(
     lines = []
     for index, line in enumerate(tail):
         line_timestamp = parse_log_timestamp(line)
-        is_context_match = (
+        line_correlation_id = extract_correlation_id(line)
+        is_context_match = (correlation_id is not None and line_correlation_id == correlation_id) or (
             around_timestamp is not None
             and line_timestamp is not None
             and context_start is not None
@@ -455,12 +501,15 @@ def read_log_file_with_context(
                 lineNumber=starting_line + index,
                 level=parse_log_level(line),
                 timestamp=line_timestamp,
+                correlationId=line_correlation_id,
                 isContextMatch=is_context_match,
                 content=line,
             )
         )
 
-    if around_timestamp and any(line.isContextMatch for line in lines):
+    if correlation_id and any(line.correlationId == correlation_id for line in lines):
+        lines = [line for line in lines if line.correlationId == correlation_id]
+    elif around_timestamp and any(line.isContextMatch for line in lines):
         lines = [line for line in lines if line.isContextMatch]
 
     return schemas.LogFileRead(filePath=str(path), lines=lines)
@@ -470,6 +519,7 @@ def serialize_import_event(import_event: models.ImportEvent) -> schemas.ImportEv
     return schemas.ImportEventRead(
         importEventId=import_event.import_event_id,
         createdAt=import_event.created_at,
+        correlationId=import_event.correlation_id,
         sourceFileName=import_event.source_file_name,
         importedBy=import_event.imported_by,
         status=import_event.status,
@@ -485,6 +535,7 @@ def serialize_import_event(import_event: models.ImportEvent) -> schemas.ImportEv
 def record_import_event(
     db: Session,
     *,
+    correlation_id: str,
     source_file_name: str,
     imported_by: str,
     status: str,
@@ -496,6 +547,7 @@ def record_import_event(
     technical_details: str = "",
 ) -> None:
     import_event = models.ImportEvent(
+        correlation_id=correlation_id,
         source_file_name=source_file_name,
         imported_by=imported_by or "Unknown",
         status=status,
@@ -510,6 +562,7 @@ def record_import_event(
     commit_with_rollback(
         db,
         "Failed to record import event.",
+        correlation_id=correlation_id,
         source_file_name=source_file_name,
         imported_by=imported_by,
         status=status,
