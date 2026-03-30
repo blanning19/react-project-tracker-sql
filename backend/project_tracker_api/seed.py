@@ -1,10 +1,14 @@
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from .config import get_settings
 from .database import Base, SessionLocal, engine
 from .models import ImportEvent, Manager, Project, Task, TeamMember, UserAccess, UserSetting
 
 settings = get_settings()
+
+
+def utc_now_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 PROJECTS = [
     {
@@ -230,7 +234,7 @@ USER_ACCESS = [
 
 IMPORT_EVENTS = [
     {
-        "created_at": datetime.utcnow() - timedelta(days=2),
+        "created_at": utc_now_naive() - timedelta(days=2),
         "correlation_id": "seed-success-advanced-launch",
         "source_file_name": "advanced-product-launch.xml",
         "imported_by": "Ava Patel",
@@ -243,7 +247,7 @@ IMPORT_EVENTS = [
         "technical_details": "",
     },
     {
-        "created_at": datetime.utcnow() - timedelta(days=1, hours=3),
+        "created_at": utc_now_naive() - timedelta(days=1, hours=3),
         "correlation_id": "seed-success-client-portal",
         "source_file_name": "client-portal-rollout.xml",
         "imported_by": "Jordan Lee",
@@ -256,7 +260,7 @@ IMPORT_EVENTS = [
         "technical_details": "",
     },
     {
-        "created_at": datetime.utcnow() - timedelta(hours=6),
+        "created_at": utc_now_naive() - timedelta(hours=6),
         "correlation_id": "seed-failure-invalid-extension",
         "source_file_name": "invalid-plan.txt",
         "imported_by": "Ava Patel",

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -7,6 +7,11 @@ from .config import get_settings
 from .database import Base
 
 DEFAULT_USER_NAME = get_settings().default_user_name
+
+
+def utc_now_naive() -> datetime:
+    """Return a UTC timestamp without tzinfo to match the current DateTime column."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Project(Base):
@@ -84,7 +89,7 @@ class ImportEvent(Base):
     __tablename__ = "import_events"
 
     import_event_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=utc_now_naive)
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     source_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     imported_by: Mapped[str] = mapped_column(String(150), nullable=False, default="Unknown")

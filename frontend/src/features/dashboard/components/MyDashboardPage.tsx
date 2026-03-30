@@ -3,6 +3,7 @@ import { Alert, Badge, Card, Col, Container, Form, Row, Spinner, Table } from 'r
 import { Link } from 'react-router-dom';
 import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
+import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 import { ProjectRecord, TaskRecord } from '../../../shared/types/models';
@@ -29,12 +30,12 @@ export function MyDashboardPage() {
                 const ownsProject = project.ProjectManager.toLowerCase() === normalizedUserName;
                 const ownsOpenProject = ownsProject && project.Status.toLowerCase() !== 'completed';
                 const hasAssignedTask = project.tasks.some((task) =>
-                    task.ResourceNames.toLowerCase().includes(normalizedUserName),
+                    isTaskAssignedToUser(task.ResourceNames, currentUserName),
                 );
 
                 return ownsOpenProject || hasAssignedTask;
             }),
-        [normalizedUserName, projects],
+        [currentUserName, normalizedUserName, projects],
     );
 
     const myOpenTasks = useMemo<MyTaskRow[]>(
@@ -46,11 +47,11 @@ export function MyDashboardPage() {
                     .filter(
                         (task) =>
                             task.Status.toLowerCase() !== 'completed' &&
-                            task.ResourceNames.toLowerCase().includes(normalizedUserName),
+                            isTaskAssignedToUser(task.ResourceNames, currentUserName),
                     )
                     .map((task) => ({ project, task, isOwner }));
             }),
-        [myProjects, normalizedUserName],
+        [currentUserName, myProjects, normalizedUserName],
     );
 
     if (isLoading || isSettingsLoading) {
@@ -168,7 +169,7 @@ export function MyDashboardPage() {
                                                 project.tasks.filter(
                                                     (task) =>
                                                         task.Status.toLowerCase() !== 'completed' &&
-                                                        task.ResourceNames.toLowerCase().includes(normalizedUserName),
+                                                        isTaskAssignedToUser(task.ResourceNames, currentUserName),
                                                 ).length
                                             }
                                         </td>

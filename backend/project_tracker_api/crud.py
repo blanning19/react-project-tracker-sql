@@ -1,16 +1,13 @@
-import json
 import logging
-from datetime import date, datetime, timedelta
-from pathlib import Path
+from datetime import date
 
 from sqlalchemy import func, select
-from sqlalchemy.engine import make_url
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
-from . import models, schemas
+from . import admin_service, log_service, models, schemas
 from .config import get_settings
 from .ms_project_import import ImportedProject
+from .persistence import commit_with_rollback
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +25,6 @@ def calculate_project_percent_complete(tasks: list[models.Task]) -> int:
         return 0
 
     return round(sum(task.PercentComplete for task in tasks) / len(tasks))
-
-
-def commit_with_rollback(db: Session, message: str, **context: object) -> None:
-    try:
-        db.commit()
-    except SQLAlchemyError:
-        db.rollback()
-        logger.exception(message, extra={"context": context})
-        raise
 
 
 def get_tasks_for_project(db: Session, project_uid: int) -> list[models.Task]:
@@ -228,7 +216,7 @@ def import_project(
     )
     serialized_project = serialize_project(get_project(db, project.ProjectUID))
     try:
-        record_import_event(
+        admin_service.record_import_event(
             db,
             correlation_id=correlation_id or "",
             source_file_name=imported_project.source_file_name,
@@ -410,125 +398,24 @@ def get_managers(db: Session) -> list[schemas.ManagerRead]:
     return [serialize_manager(manager) for manager in managers]
 
 
-def parse_log_level(line: str) -> str:
-    upper_line = line.upper()
-    for level in ("ERROR", "WARNING", "INFO", "DEBUG", "CRITICAL"):
-        if f" {level} " in upper_line or upper_line.startswith(level):
-            return level
-    return "OTHER"
-
-
 def read_log_file(log_file_path: str | None, max_lines: int = 400) -> schemas.LogFileRead:
-    return read_log_file_with_context(log_file_path, max_lines=max_lines, around_timestamp=None)
-
-
-def parse_log_timestamp(line: str) -> datetime | None:
-    timestamp_token = line[:23]
-    try:
-        return datetime.strptime(timestamp_token, "%Y-%m-%d %H:%M:%S,%f")
-    except ValueError:
-        return None
-
-
-def extract_log_context(line: str) -> dict[str, object]:
-    marker = "| context="
-    if marker not in line:
-        return {}
-
-    _, _, serialized_context = line.partition(marker)
-    serialized_context = serialized_context.strip()
-    if not serialized_context:
-        return {}
-
-    try:
-        parsed_context = json.loads(serialized_context)
-    except json.JSONDecodeError:
-        return {}
-
-    if isinstance(parsed_context, dict):
-        return parsed_context
-    return {}
-
-
-def extract_correlation_id(line: str) -> str | None:
-    context = extract_log_context(line)
-    correlation_id = context.get("correlationId")
-    if isinstance(correlation_id, str) and correlation_id:
-        return correlation_id
-
-    nested_context = context.get("context")
-    if isinstance(nested_context, dict):
-        nested_correlation_id = nested_context.get("correlation_id") or nested_context.get("correlationId")
-        if isinstance(nested_correlation_id, str) and nested_correlation_id:
-            return nested_correlation_id
-
-    return None
+    return log_service.read_log_file(log_file_path, max_lines=max_lines)
 
 
 def read_log_file_with_context(
     log_file_path: str | None,
     *,
     max_lines: int = 400,
-    around_timestamp: datetime | None,
+    around_timestamp,
     correlation_id: str | None = None,
     window_seconds: int = 180,
 ) -> schemas.LogFileRead:
-    if not log_file_path:
-        return schemas.LogFileRead(filePath=None, lines=[])
-
-    path = Path(log_file_path)
-    if not path.exists():
-        return schemas.LogFileRead(filePath=str(path), lines=[])
-
-    content = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    tail = content[-max_lines:]
-    starting_line = max(1, len(content) - len(tail) + 1)
-    context_start = around_timestamp - timedelta(seconds=window_seconds) if around_timestamp else None
-    context_end = around_timestamp + timedelta(seconds=window_seconds) if around_timestamp else None
-    lines = []
-    for index, line in enumerate(tail):
-        line_timestamp = parse_log_timestamp(line)
-        line_correlation_id = extract_correlation_id(line)
-        is_context_match = (correlation_id is not None and line_correlation_id == correlation_id) or (
-            around_timestamp is not None
-            and line_timestamp is not None
-            and context_start is not None
-            and context_end is not None
-            and context_start <= line_timestamp <= context_end
-        )
-        lines.append(
-            schemas.LogLineRead(
-                lineNumber=starting_line + index,
-                level=parse_log_level(line),
-                timestamp=line_timestamp,
-                correlationId=line_correlation_id,
-                isContextMatch=is_context_match,
-                content=line,
-            )
-        )
-
-    if correlation_id and any(line.correlationId == correlation_id for line in lines):
-        lines = [line for line in lines if line.correlationId == correlation_id]
-    elif around_timestamp and any(line.isContextMatch for line in lines):
-        lines = [line for line in lines if line.isContextMatch]
-
-    return schemas.LogFileRead(filePath=str(path), lines=lines)
-
-
-def serialize_import_event(import_event: models.ImportEvent) -> schemas.ImportEventRead:
-    return schemas.ImportEventRead(
-        importEventId=import_event.import_event_id,
-        createdAt=import_event.created_at,
-        correlationId=import_event.correlation_id,
-        sourceFileName=import_event.source_file_name,
-        importedBy=import_event.imported_by,
-        status=import_event.status,
-        projectUid=import_event.project_uid,
-        projectName=import_event.project_name,
-        taskCount=import_event.task_count,
-        message=import_event.message,
-        failureReason=import_event.failure_reason,
-        technicalDetails=import_event.technical_details,
+    return log_service.read_log_file_with_context(
+        log_file_path,
+        max_lines=max_lines,
+        around_timestamp=around_timestamp,
+        correlation_id=correlation_id,
+        window_seconds=window_seconds,
     )
 
 
@@ -546,10 +433,13 @@ def record_import_event(
     failure_reason: str = "",
     technical_details: str = "",
 ) -> None:
-    import_event = models.ImportEvent(
+    # Keep this wrapper in crud.py so existing callers and tests can keep patching
+    # one stable import path while the implementation lives in admin_service.py.
+    return admin_service.record_import_event(
+        db,
         correlation_id=correlation_id,
         source_file_name=source_file_name,
-        imported_by=imported_by or "Unknown",
+        imported_by=imported_by,
         status=status,
         project_uid=project_uid,
         project_name=project_name,
@@ -558,100 +448,35 @@ def record_import_event(
         failure_reason=failure_reason,
         technical_details=technical_details,
     )
-    db.add(import_event)
-    commit_with_rollback(
-        db,
-        "Failed to record import event.",
-        correlation_id=correlation_id,
-        source_file_name=source_file_name,
-        imported_by=imported_by,
-        status=status,
-    )
 
 
 def get_recent_import_events(db: Session, limit: int = 10) -> list[schemas.ImportEventRead]:
-    import_events = db.scalars(
-        select(models.ImportEvent)
-        .order_by(models.ImportEvent.created_at.desc(), models.ImportEvent.import_event_id.desc())
-        .limit(limit)
-    ).all()
-    return [serialize_import_event(import_event) for import_event in import_events]
+    return admin_service.get_recent_import_events(db, limit=limit)
 
 
 def get_import_event_summary(db: Session) -> schemas.ImportEventSummaryRead:
-    import_events = db.scalars(select(models.ImportEvent).order_by(models.ImportEvent.created_at.desc())).all()
-    successful_imports = sum(1 for import_event in import_events if import_event.status == "Succeeded")
-    failed_imports = sum(1 for import_event in import_events if import_event.status == "Failed")
-    last_failure = next((import_event for import_event in import_events if import_event.status == "Failed"), None)
-    return schemas.ImportEventSummaryRead(
-        totalImports=len(import_events),
-        successfulImports=successful_imports,
-        failedImports=failed_imports,
-        lastFailureMessage=last_failure.message if last_failure else None,
-    )
+    return admin_service.get_import_event_summary(db)
 
 
 def serialize_user_access(user_access: models.UserAccess) -> schemas.UserAccessRead:
-    return schemas.UserAccessRead(
-        userName=user_access.user_name,
-        role=user_access.role,
-        canViewAdmin=user_access.can_view_admin,
-        canViewLogs=user_access.can_view_logs,
-        notes=user_access.notes,
-    )
+    return admin_service.serialize_user_access(user_access)
 
 
 def get_or_create_user_access(db: Session, user_name: str) -> models.UserAccess:
-    user_access = db.get(models.UserAccess, user_name)
-    if user_access:
-        return user_access
-
-    settings = get_settings()
-    normalized_name = user_name.strip()
-    user_access = models.UserAccess(
-        user_name=normalized_name,
-        role="Admin" if normalized_name == settings.admin_user_name else "Viewer",
-        can_view_admin=normalized_name == settings.admin_user_name,
-        can_view_logs=normalized_name == settings.admin_user_name,
-    )
-    db.add(user_access)
-    commit_with_rollback(db, "Failed to create user access.", user_name=user_name)
-    db.refresh(user_access)
-    return user_access
+    return admin_service.get_or_create_user_access(db, user_name)
 
 
 def get_user_access_list(db: Session) -> list[schemas.UserAccessRead]:
-    access_records = db.scalars(select(models.UserAccess).order_by(models.UserAccess.user_name)).all()
-    return [serialize_user_access(access_record) for access_record in access_records]
+    return admin_service.get_user_access_list(db)
 
 
 def get_user_access(db: Session, user_name: str) -> schemas.UserAccessRead:
-    return serialize_user_access(get_or_create_user_access(db, user_name))
+    return admin_service.get_user_access(db, user_name)
 
 
 def update_user_access(db: Session, user_name: str, payload: schemas.UserAccessUpdate) -> schemas.UserAccessRead:
-    access_record = get_or_create_user_access(db, user_name)
-    access_record.role = payload.role
-    access_record.can_view_admin = payload.canViewAdmin
-    access_record.can_view_logs = payload.canViewLogs
-    access_record.notes = payload.notes
-    commit_with_rollback(db, "Failed to update user access.", user_name=user_name)
-    db.refresh(access_record)
-    return serialize_user_access(access_record)
+    return admin_service.update_user_access(db, user_name, payload)
 
 
 def get_environment_summary() -> schemas.EnvironmentSummaryRead:
-    settings = get_settings()
-    database_url = make_url(settings.database_url)
-    return schemas.EnvironmentSummaryRead(
-        appVersion="0.1.0",
-        adminUserName=settings.admin_user_name,
-        logFilePath=settings.log_file_path,
-        corsOrigins=settings.cors_origins,
-        databaseBackend=database_url.get_backend_name(),
-        databaseHost=database_url.host,
-        databaseName=database_url.database,
-        swaggerDocsUrl="http://127.0.0.1:8000/docs",
-        openapiJsonUrl="http://127.0.0.1:8000/openapi.json",
-        healthUrl="http://127.0.0.1:8000/health",
-    )
+    return admin_service.get_environment_summary()

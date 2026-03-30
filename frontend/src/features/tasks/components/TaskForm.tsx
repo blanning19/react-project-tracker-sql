@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { apiFetch } from '../../../shared/api/http';
 import { ProjectRecord, TaskPayload, TaskRecord, TeamMemberRecord } from '../../../shared/types/models';
+import { parseAssigneeNames } from '../../../shared/utils/assignees';
 
 interface TaskFormProps {
     task?: TaskRecord | null;
@@ -52,11 +53,12 @@ function toEditableTask(task: TaskRecord): TaskPayload {
     };
 }
 
-function parseAssignees(resourceNames: string): string[] {
-    return resourceNames
-        .split(',')
-        .map((name) => name.trim())
-        .filter(Boolean);
+function calculateDurationDays(start: string, finish: string): number {
+    const startDate = new Date(`${start}T00:00:00`);
+    const finishDate = new Date(`${finish}T00:00:00`);
+    const millisecondsPerDay = 1000 * 60 * 60 * 24;
+    const diffInDays = Math.round((finishDate.getTime() - startDate.getTime()) / millisecondsPerDay);
+    return Math.max(1, diffInDays);
 }
 
 export function TaskForm({ task, projects, activeProjectId, onSave, onClear, showCreateAction = true }: TaskFormProps) {
@@ -78,7 +80,8 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
     }, []);
 
     const activeProject = projects.find((project) => project.ProjectUID === formState.ProjectUID);
-    const selectedAssignees = parseAssignees(formState.ResourceNames);
+    const selectedAssignees = parseAssigneeNames(formState.ResourceNames);
+    const derivedDurationDays = calculateDurationDays(formState.Start, formState.Finish);
     const assigneeOptions = Array.from(
         new Set([...teamMembers.map((member) => member.displayName), ...selectedAssignees]),
     ).sort((left, right) => {
@@ -94,7 +97,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        await onSave(formState, task?.TaskUID);
+        await onSave({ ...formState, DurationDays: derivedDurationDays }, task?.TaskUID);
         if (!task) {
             setFormState(createEmptyTask(activeProjectId));
         }
@@ -206,15 +209,11 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                         </Col>
                         <Col md={4}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">DurationDays</Form.Label>
-                                <Form.Control
-                                    type="number"
-                                    min={1}
-                                    value={formState.DurationDays}
-                                    onChange={(event) =>
-                                        setFormState({ ...formState, DurationDays: Number(event.target.value) })
-                                    }
-                                />
+                                <Form.Label className="fw-semibold">Duration</Form.Label>
+                                <Form.Control value={`${derivedDurationDays} day${derivedDurationDays === 1 ? '' : 's'}`} readOnly plaintext />
+                                <Form.Text className="text-body-secondary">
+                                    Duration is calculated automatically from the start and finish dates.
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                         <Col md={6}>
