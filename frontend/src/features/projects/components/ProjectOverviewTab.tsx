@@ -9,7 +9,10 @@ interface ProjectOverviewTabProps {
     isOwner: boolean;
     isSaving: boolean;
     onDeleteProject: () => Promise<void>;
-    onProjectSave: (payload: Omit<ProjectRecord, 'tasks' | 'IsOverdue' | 'CreatedDate'>, projectId?: number) => Promise<void>;
+    onProjectSave: (
+        payload: Omit<ProjectRecord, 'tasks' | 'IsOverdue' | 'CreatedDate'>,
+        projectId?: number,
+    ) => Promise<void>;
     onSetEditingProject: () => void;
     project: ProjectRecord;
     projectForForm: ProjectRecord | null;
@@ -86,7 +89,8 @@ export function ProjectOverviewTab({
                                             </div>
                                             <div className="fw-semibold mb-1">{phase.TaskName}</div>
                                             <div className="small text-body-secondary">
-                                                {taskCount} task{taskCount === 1 ? '' : 's'} | {milestoneCount} milestone
+                                                {taskCount} task{taskCount === 1 ? '' : 's'} | {milestoneCount}{' '}
+                                                milestone
                                                 {milestoneCount === 1 ? '' : 's'}
                                             </div>
                                         </Card.Body>

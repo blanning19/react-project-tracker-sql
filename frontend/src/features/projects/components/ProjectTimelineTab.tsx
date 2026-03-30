@@ -1,12 +1,7 @@
 import { Alert, Badge, Card } from 'react-bootstrap';
 import { ProjectRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
-import {
-    buildTaskLookup,
-    differenceInDays,
-    getTaskTypeBadges,
-    parseDateValue,
-} from './projectDetailUtils';
+import { buildTaskLookup, differenceInDays, getTaskTypeBadges, parseDateValue } from './projectDetailUtils';
 
 interface ProjectTimelineTabProps {
     project: ProjectRecord;
@@ -70,7 +65,9 @@ export function ProjectTimelineTab({ project }: ProjectTimelineTabProps) {
                                         </div>
                                         <div className="fw-semibold">{task.TaskName}</div>
                                         {task.Predecessors ? (
-                                            <div className="small text-body-secondary">Depends on: {task.Predecessors}</div>
+                                            <div className="small text-body-secondary">
+                                                Depends on: {task.Predecessors}
+                                            </div>
                                         ) : null}
                                     </div>
                                     <div className="text-lg-end">
@@ -93,7 +90,9 @@ export function ProjectTimelineTab({ project }: ProjectTimelineTabProps) {
                             {dependencyRows.map(({ task, predecessors }) => (
                                 <div key={task.TaskUID} className="dependency-row">
                                     <div className="dependency-node dependency-node-source">
-                                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">{getTaskTypeBadges(task)}</div>
+                                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                            {getTaskTypeBadges(task)}
+                                        </div>
                                         <div className="fw-semibold">{task.TaskName}</div>
                                     </div>
                                     <div className="dependency-node dependency-node-target">
@@ -104,7 +103,9 @@ export function ProjectTimelineTab({ project }: ProjectTimelineTabProps) {
                                                     <span className="dependency-pill">
                                                         <span className="dependency-pill-code">{predecessor}</span>
                                                         {taskLookup.get(predecessor) ? (
-                                                            <span className="dependency-pill-name">{taskLookup.get(predecessor)}</span>
+                                                            <span className="dependency-pill-name">
+                                                                {taskLookup.get(predecessor)}
+                                                            </span>
                                                         ) : null}
                                                     </span>
                                                 </div>
@@ -161,7 +162,9 @@ export function ProjectTimelineTab({ project }: ProjectTimelineTabProps) {
                                                     Phase
                                                 </Badge>
                                             ) : null}
-                                            {task.IsMilestone && !task.IsSummary ? <Badge bg="info">Milestone</Badge> : null}
+                                            {task.IsMilestone && !task.IsSummary ? (
+                                                <Badge bg="info">Milestone</Badge>
+                                            ) : null}
                                         </div>
                                     </div>
                                     <div className="gantt-track">

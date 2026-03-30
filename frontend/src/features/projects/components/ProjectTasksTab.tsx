@@ -38,8 +38,8 @@ export function ProjectTasksTab({
                         <h2 className="h5 mb-0">Project task plan</h2>
                         {!isOwner ? (
                             <p className="mb-0 small text-body-secondary">
-                                You can view the full imported project here. Editing still follows ownership and assignment
-                                rules.
+                                You can view the full imported project here. Editing still follows ownership and
+                                assignment rules.
                             </p>
                         ) : null}
                     </div>
@@ -72,14 +72,18 @@ export function ProjectTasksTab({
                                             style={{ paddingLeft: `${Math.max(0, task.OutlineLevel - 1) * 1.25}rem` }}
                                         >
                                             <div className="d-flex align-items-center gap-2 flex-wrap">
-                                                {task.WBS ? <small className="text-body-secondary">{task.WBS}</small> : null}
+                                                {task.WBS ? (
+                                                    <small className="text-body-secondary">{task.WBS}</small>
+                                                ) : null}
                                                 <span>{task.TaskName}</span>
                                                 {task.IsSummary ? (
                                                     <Badge bg="warning" text="dark">
                                                         Phase
                                                     </Badge>
                                                 ) : null}
-                                                {task.IsMilestone && !task.IsSummary ? <Badge bg="info">Milestone</Badge> : null}
+                                                {task.IsMilestone && !task.IsSummary ? (
+                                                    <Badge bg="info">Milestone</Badge>
+                                                ) : null}
                                             </div>
                                         </div>
                                         <small className="text-body-secondary">TaskUID {task.TaskUID}</small>
@@ -93,7 +97,11 @@ export function ProjectTasksTab({
                                     <td>{task.PercentComplete}%</td>
                                     <td className="text-end">
                                         <div className="d-flex gap-2 justify-content-end flex-wrap">
-                                            <Button variant="outline-primary" size="sm" onClick={() => onEditTask(task)}>
+                                            <Button
+                                                variant="outline-primary"
+                                                size="sm"
+                                                onClick={() => onEditTask(task)}
+                                            >
                                                 Edit
                                             </Button>
                                             {isOwner ? (

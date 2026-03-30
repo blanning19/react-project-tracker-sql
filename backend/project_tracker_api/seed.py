@@ -10,6 +10,7 @@ settings = get_settings()
 def utc_now_naive() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
 
+
 PROJECTS = [
     {
         "ProjectUID": 1001,

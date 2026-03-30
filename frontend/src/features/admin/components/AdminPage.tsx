@@ -48,7 +48,9 @@ export function AdminPage() {
             // These datasets power independent tabs, so loading them in parallel
             // keeps the admin shell responsive without coupling the tab components.
             const [nextEnvironmentSummary, nextImportEvents, nextUserAccessList] = await Promise.all([
-                apiFetch<EnvironmentSummaryRecord>(`/admin/environment?user_name=${encodeURIComponent(currentUserName)}`),
+                apiFetch<EnvironmentSummaryRecord>(
+                    `/admin/environment?user_name=${encodeURIComponent(currentUserName)}`,
+                ),
                 apiFetch<ImportEventRecord[]>(`/admin/import-events?user_name=${encodeURIComponent(currentUserName)}`),
                 apiFetch<UserAccessRecord[]>(`/admin/access?user_name=${encodeURIComponent(currentUserName)}`),
             ]);
@@ -83,7 +85,9 @@ export function AdminPage() {
     // The page keeps a tiny derived summary so the imports tab can show trend
     // information without needing a second API endpoint.
     const filteredImportSummary = useMemo(() => {
-        const successfulImports = filteredImportEvents.filter((importEvent) => importEvent.status === 'Succeeded').length;
+        const successfulImports = filteredImportEvents.filter(
+            (importEvent) => importEvent.status === 'Succeeded',
+        ).length;
         const failedImports = filteredFailureEvents.length;
         const lastFailure = filteredFailureEvents[0];
         return {
@@ -150,8 +154,8 @@ export function AdminPage() {
                             <p className="text-uppercase small mb-2 hero-kicker">Admin</p>
                             <h1 className="display-6 fw-semibold mb-2">Workspace administration tools.</h1>
                             <p className="mb-0 text-body-secondary">
-                                Import history, environment details, visibility controls, and application diagnostics all
-                                live here now.
+                                Import history, environment details, visibility controls, and application diagnostics
+                                all live here now.
                             </p>
                         </div>
                     </Col>
@@ -179,8 +183,8 @@ export function AdminPage() {
                                 <p className="text-uppercase small mb-2 hero-kicker">Admin</p>
                                 <h1 className="display-6 fw-semibold mb-2">Workspace administration tools.</h1>
                                 <p className="mb-0 text-body-secondary">
-                                    Import history, environment details, visibility controls, and application diagnostics
-                                    all live here now.
+                                    Import history, environment details, visibility controls, and application
+                                    diagnostics all live here now.
                                 </p>
                             </div>
                             <Badge bg="success">Admin tools enabled</Badge>

@@ -128,7 +128,9 @@ export function ProjectDetailPage() {
                                     {project.SourceFileName}
                                 </p>
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                                    <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>{project.Status}</Badge>
+                                    <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>
+                                        {project.Status}
+                                    </Badge>
                                     {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
                                     <Badge bg="secondary">{project.Priority}</Badge>
                                 </div>

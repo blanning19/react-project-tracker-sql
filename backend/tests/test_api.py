@@ -159,6 +159,78 @@ def test_import_project_rejects_empty_upload(client):
     assert response.json()["detail"] == "The uploaded file is empty."
 
 
+def test_task_save_derives_duration_from_start_and_finish(client):
+    project_response = client.post(
+        "/api/projects",
+        json={
+            "ProjectUID": 1001,
+            "ProjectName": "Duration verification",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-01",
+            "Finish": "2026-03-15",
+            "DurationDays": 99,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+    assert project_response.status_code == 201
+
+    create_response = client.post(
+        "/api/tasks",
+        json={
+            "TaskUID": 5001,
+            "ProjectUID": 1001,
+            "TaskName": "Draft project plan",
+            "OutlineLevel": 1,
+            "OutlineNumber": "1",
+            "WBS": "1",
+            "IsSummary": False,
+            "Predecessors": "",
+            "ResourceNames": "Ava Patel",
+            "Start": "2026-03-02",
+            "Finish": "2026-03-05",
+            "DurationDays": 42,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "IsMilestone": False,
+            "Notes": "",
+        },
+    )
+
+    assert create_response.status_code == 201
+    created_task = create_response.json()
+    assert created_task["DurationDays"] == 3
+
+    update_response = client.put(
+        "/api/tasks/5001",
+        json={
+            "ProjectUID": 1001,
+            "TaskName": "Draft project plan",
+            "OutlineLevel": 1,
+            "OutlineNumber": "1",
+            "WBS": "1",
+            "IsSummary": False,
+            "Predecessors": "",
+            "ResourceNames": "Ava Patel",
+            "Start": "2026-03-02",
+            "Finish": "2026-03-08",
+            "DurationDays": 99,
+            "PercentComplete": 15,
+            "Status": "In Progress",
+            "IsMilestone": False,
+            "Notes": "",
+        },
+    )
+
+    assert update_response.status_code == 200
+    updated_task = update_response.json()
+    assert updated_task["DurationDays"] == 6
+
+
 def test_settings_update_rejects_user_mismatch(client):
     response = client.put(
         "/api/settings/demo-user",

@@ -131,7 +131,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                     <Row className="g-3">
                         <Col md={12}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">ProjectUID</Form.Label>
+                                <Form.Label className="fw-semibold">Project</Form.Label>
                                 <Form.Control
                                     value={
                                         activeProject
@@ -141,11 +141,14 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                     readOnly
                                     plaintext
                                 />
+                                <Form.Text className="text-body-secondary">
+                                    Tasks are created within the currently selected project.
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                         <Col md={12}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">TaskName</Form.Label>
+                                <Form.Label className="fw-semibold">Task Name</Form.Label>
                                 <Form.Control
                                     value={formState.TaskName}
                                     onChange={(event) => setFormState({ ...formState, TaskName: event.target.value })}
@@ -180,10 +183,11 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                         </Col>
                         <Col md={12}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">Predecessors</Form.Label>
+                                <Form.Label className="fw-semibold">Dependencies</Form.Label>
                                 <Form.Control value={formState.Predecessors || 'None'} readOnly plaintext />
                                 <Form.Text className="text-body-secondary">
-                                    Imported dependency labels are shown here for reference.
+                                    Imported dependency labels are shown here for reference and are not edited in this
+                                    form.
                                 </Form.Text>
                             </Form.Group>
                         </Col>
@@ -210,7 +214,11 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                         <Col md={4}>
                             <Form.Group>
                                 <Form.Label className="fw-semibold">Duration</Form.Label>
-                                <Form.Control value={`${derivedDurationDays} day${derivedDurationDays === 1 ? '' : 's'}`} readOnly plaintext />
+                                <Form.Control
+                                    value={`${derivedDurationDays} day${derivedDurationDays === 1 ? '' : 's'}`}
+                                    readOnly
+                                    plaintext
+                                />
                                 <Form.Text className="text-body-secondary">
                                     Duration is calculated automatically from the start and finish dates.
                                 </Form.Text>
@@ -234,7 +242,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                         </Col>
                         <Col md={6}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">PercentComplete</Form.Label>
+                                <Form.Label className="fw-semibold">Percent Complete</Form.Label>
                                 <Form.Control
                                     type="number"
                                     min={0}
@@ -249,7 +257,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                         <Col md={12}>
                             <Form.Check
                                 id="task-milestone"
-                                label="IsMilestone"
+                                label="Milestone"
                                 checked={formState.IsMilestone}
                                 onChange={(event) => setFormState({ ...formState, IsMilestone: event.target.checked })}
                             />

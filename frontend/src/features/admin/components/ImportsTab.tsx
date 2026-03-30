@@ -108,17 +108,22 @@ export function ImportsTab({
                                     <div
                                         key={importEvent.importEventId}
                                         className={`border rounded-3 p-3 d-flex flex-column gap-2 ${
-                                            importEvent.status === 'Failed' ? 'bg-danger-subtle border-danger-subtle' : ''
+                                            importEvent.status === 'Failed'
+                                                ? 'bg-danger-subtle border-danger-subtle'
+                                                : ''
                                         }`}
                                     >
                                         <div className="d-flex flex-column flex-lg-row gap-2 justify-content-between align-items-lg-start">
                                             <div>
                                                 <div className="fw-semibold">{importEvent.sourceFileName}</div>
                                                 <div className="small text-body-secondary">
-                                                    Imported by {importEvent.importedBy} on {formatTimestamp(importEvent.createdAt)}
+                                                    Imported by {importEvent.importedBy} on{' '}
+                                                    {formatTimestamp(importEvent.createdAt)}
                                                 </div>
                                             </div>
-                                            <Badge bg={getImportVariant(importEvent.status)}>{importEvent.status}</Badge>
+                                            <Badge bg={getImportVariant(importEvent.status)}>
+                                                {importEvent.status}
+                                            </Badge>
                                         </div>
                                         <div className="small">
                                             <strong>Project:</strong> {importEvent.projectName || 'No project created'}
@@ -129,16 +134,19 @@ export function ImportsTab({
                                         {importEvent.status === 'Failed' ? (
                                             <>
                                                 <div className="small">
-                                                    <strong>Reason:</strong> {importEvent.failureReason || importEvent.message}
+                                                    <strong>Reason:</strong>{' '}
+                                                    {importEvent.failureReason || importEvent.message}
                                                 </div>
                                                 {importEvent.correlationId ? (
                                                     <div className="small text-body-secondary">
-                                                        <strong>Correlation ID:</strong> <code>{importEvent.correlationId}</code>
+                                                        <strong>Correlation ID:</strong>{' '}
+                                                        <code>{importEvent.correlationId}</code>
                                                     </div>
                                                 ) : null}
                                                 {importEvent.technicalDetails ? (
                                                     <div className="small text-body-secondary">
-                                                        <strong>Technical details:</strong> {importEvent.technicalDetails}
+                                                        <strong>Technical details:</strong>{' '}
+                                                        {importEvent.technicalDetails}
                                                     </div>
                                                 ) : null}
                                                 <div className="d-flex flex-wrap gap-2 pt-1">
@@ -146,7 +154,9 @@ export function ImportsTab({
                                                         <Button
                                                             variant="outline-secondary"
                                                             size="sm"
-                                                            onClick={() => void onCopyCorrelationId(importEvent.correlationId)}
+                                                            onClick={() =>
+                                                                void onCopyCorrelationId(importEvent.correlationId)
+                                                            }
                                                         >
                                                             {copiedCorrelationId === importEvent.correlationId
                                                                 ? 'Copied'

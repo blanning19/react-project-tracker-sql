@@ -185,13 +185,17 @@ export function ProjectForm({
                         ) : null}
                         <Col md={12}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">SourceFileName</Form.Label>
+                                <Form.Label className="fw-semibold">Source File</Form.Label>
                                 <Form.Control value={formState.SourceFileName} readOnly disabled={readOnly} />
+                                <Form.Text className="text-body-secondary">
+                                    The original file name helps trace whether this project was created manually or
+                                    imported.
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                         <Col md={12}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">ProjectName</Form.Label>
+                                <Form.Label className="fw-semibold">Project Name</Form.Label>
                                 <Form.Control
                                     value={formState.ProjectName}
                                     onChange={(event) =>
@@ -253,6 +257,9 @@ export function ProjectForm({
                                     readOnly
                                     disabled={readOnly}
                                 />
+                                <Form.Text className="text-body-secondary">
+                                    Imported calendars are shown for reference and are not edited in this form.
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                         <Col md={4}>
@@ -281,8 +288,15 @@ export function ProjectForm({
                         </Col>
                         <Col md={4}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">DurationDays</Form.Label>
-                                <Form.Control value={calculatedDurationDays} readOnly disabled={readOnly} />
+                                <Form.Label className="fw-semibold">Duration</Form.Label>
+                                <Form.Control
+                                    value={`${calculatedDurationDays} day${calculatedDurationDays === 1 ? '' : 's'}`}
+                                    readOnly
+                                    disabled={readOnly}
+                                />
+                                <Form.Text className="text-body-secondary">
+                                    Duration is calculated from the start and finish dates.
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                         <Col md={6}>
@@ -307,8 +321,11 @@ export function ProjectForm({
                         </Col>
                         <Col md={6}>
                             <Form.Group>
-                                <Form.Label className="fw-semibold">PercentComplete</Form.Label>
+                                <Form.Label className="fw-semibold">Percent Complete</Form.Label>
                                 <Form.Control value={`${calculatedPercentComplete}%`} readOnly disabled={readOnly} />
+                                <Form.Text className="text-body-secondary">
+                                    Completion is calculated from the tasks currently assigned to this project.
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                         <Col md={12}>

@@ -16,7 +16,11 @@ function calculateDurationDays(start: string, finish: string): number {
 }
 
 function isProjectOverdue(project: Pick<ProjectRecord, 'Finish' | 'PercentComplete' | 'Status'>): boolean {
-    return new Date(project.Finish) < new Date() && project.PercentComplete < 100 && project.Status.toLowerCase() !== 'completed';
+    return (
+        new Date(project.Finish) < new Date() &&
+        project.PercentComplete < 100 &&
+        project.Status.toLowerCase() !== 'completed'
+    );
 }
 
 function deriveProjectMetrics(project: ProjectRecord): ProjectRecord {
@@ -42,7 +46,9 @@ function upsertProject(projects: ProjectRecord[], nextProject: ProjectRecord): P
         return [...projects, normalizedProject];
     }
 
-    return projects.map((project) => (project.ProjectUID === normalizedProject.ProjectUID ? normalizedProject : project));
+    return projects.map((project) =>
+        project.ProjectUID === normalizedProject.ProjectUID ? normalizedProject : project,
+    );
 }
 
 function removeProject(projects: ProjectRecord[], projectId: number): ProjectRecord[] {

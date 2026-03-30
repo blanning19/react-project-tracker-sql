@@ -68,6 +68,7 @@ The frontend lives in `frontend/src/` and is organized by feature area:
 The main frontend patterns are:
 
 - feature-based component organization
+- coordinator pages that delegate larger screens into focused tab or section components
 - shared API client in `frontend/src/shared/api/http.ts`
 - shared type definitions in `frontend/src/shared/types/models.ts`
 - theme settings managed with React context in `frontend/src/features/settings/theme/ThemeProvider.tsx`
@@ -79,10 +80,13 @@ The backend lives in `backend/project_tracker_api/`.
 
 Core backend modules:
 
-- `main.py` for FastAPI routes
+- `main.py` for FastAPI app setup and router registration
 - `models.py` for SQLAlchemy models
 - `schemas.py` for request and response schemas
-- `crud.py` for database operations and serialization logic
+- `crud.py` for core project/task/settings operations plus compatibility wrappers
+- `routes/` for domain-focused FastAPI route handlers
+- `admin_service.py` and `log_service.py` for admin and logging behavior
+- `persistence.py` for shared commit/rollback handling
 - `database.py` for engine, session, and dependency wiring
 - `config.py` for environment-driven settings
 - `seed.py` for rebuilding local development data
@@ -122,9 +126,10 @@ Example areas:
 
 - Home page loads all projects
 - My Dashboard filters projects and tasks based on the current user
-- Project Detail handles project view/edit state and task edit state
+- Project Detail coordinates project view/edit state while overview, timeline, and tasks render in separate components
 - Theme settings are loaded and persisted through the settings API
 - Project import accepts Microsoft Project XML and creates a project plus related task and people records
+- local project and task mutations now update frontend state directly instead of always reloading the full project list
 
 ## Microsoft Project Import
 

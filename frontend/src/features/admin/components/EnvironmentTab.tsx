@@ -27,7 +27,9 @@ export function EnvironmentTab({ environmentSummary }: EnvironmentTabProps) {
                                     <div className="small text-body-secondary mb-1">Database</div>
                                     <div className="fw-semibold text-break">
                                         {environmentSummary.databaseBackend}
-                                        {environmentSummary.databaseHost ? ` on ${environmentSummary.databaseHost}` : ''}
+                                        {environmentSummary.databaseHost
+                                            ? ` on ${environmentSummary.databaseHost}`
+                                            : ''}
                                     </div>
                                     <div className="small text-body-secondary">
                                         Database name: {environmentSummary.databaseName ?? 'Not available'}

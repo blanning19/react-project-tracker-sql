@@ -37,7 +37,9 @@ export function renderDependencyBadges(predecessors: string, taskLookup: Map<str
             {values.map((value) => (
                 <span key={value} className="dependency-pill">
                     <span className="dependency-pill-code">{value}</span>
-                    {taskLookup.get(value) ? <span className="dependency-pill-name">{taskLookup.get(value)}</span> : null}
+                    {taskLookup.get(value) ? (
+                        <span className="dependency-pill-name">{taskLookup.get(value)}</span>
+                    ) : null}
                 </span>
             ))}
         </div>
@@ -52,7 +54,8 @@ export function buildPhaseSummaries(tasks: TaskRecord[]) {
         .map((phase) => {
             const phaseIndex = tasks.findIndex((task) => task.TaskUID === phase.TaskUID);
             const nextSiblingIndex = tasks.findIndex(
-                (task, taskIndex) => taskIndex > phaseIndex && task.IsSummary && task.OutlineLevel <= phase.OutlineLevel,
+                (task, taskIndex) =>
+                    taskIndex > phaseIndex && task.IsSummary && task.OutlineLevel <= phase.OutlineLevel,
             );
             const descendantTasks = tasks.filter((task, taskIndex) => {
                 const isAfterPhase = taskIndex > phaseIndex;
