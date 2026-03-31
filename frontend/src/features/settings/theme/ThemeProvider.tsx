@@ -1,5 +1,5 @@
 import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '../../../shared/api/http';
+import { apiFetch, isAbortError } from '../../../shared/api/http';
 import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { ProjectRecord, SortDirection, ThemeMode, UserSettings } from '../../../shared/types/models';
 
@@ -33,10 +33,36 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        apiFetch<UserSettings>(`/settings/${DEFAULT_USER_ID}`)
-            .then((data) => setSettings(data))
-            .catch(() => setSettings(defaultSettings))
-            .finally(() => setIsLoading(false));
+        const controller = new AbortController();
+        let isActive = true;
+
+        // Theme settings load once per app mount, but aborted startup/navigation
+        // should not flip the provider into an error fallback after unmount.
+        apiFetch<UserSettings>(`/settings/${DEFAULT_USER_ID}`, { signal: controller.signal })
+            .then((data) => {
+                if (isActive) {
+                    setSettings(data);
+                }
+            })
+            .catch((error) => {
+                if (isAbortError(error)) {
+                    return;
+                }
+
+                if (isActive) {
+                    setSettings(defaultSettings);
+                }
+            })
+            .finally(() => {
+                if (isActive) {
+                    setIsLoading(false);
+                }
+            });
+
+        return () => {
+            isActive = false;
+            controller.abort();
+        };
     }, []);
 
     useEffect(() => {

@@ -23,7 +23,6 @@ def test_openapi_docs_are_available(client):
 
 def test_create_project_and_list_projects(client):
     payload = {
-        "ProjectUID": 1001,
         "ProjectName": "Documentation rollout",
         "ProjectManager": "Ava Patel",
         "CalendarName": "Standard",
@@ -47,7 +46,72 @@ def test_create_project_and_list_projects(client):
     assert list_response.status_code == 200
     listed = list_response.json()
     assert len(listed) == 1
-    assert listed[0]["ProjectUID"] == payload["ProjectUID"]
+    assert listed[0]["ProjectUID"] == created["ProjectUID"]
+
+
+def test_create_project_assigns_uid_when_client_omits_it(client):
+    response = client.post(
+        "/api/projects",
+        json={
+            "ProjectName": "Server generated ID project",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-01",
+            "Finish": "2026-03-10",
+            "DurationDays": 9,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["ProjectUID"] > 0
+    assert payload["ProjectName"] == "Server generated ID project"
+
+
+def test_create_project_ignores_client_supplied_uid(client):
+    first_response = client.post(
+        "/api/projects",
+        json={
+            "ProjectUID": 1001,
+            "ProjectName": "First project",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-01",
+            "Finish": "2026-03-15",
+            "DurationDays": 14,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "High",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+    second_response = client.post(
+        "/api/projects",
+        json={
+            "ProjectUID": 1001,
+            "ProjectName": "Second project",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-16",
+            "Finish": "2026-03-20",
+            "DurationDays": 4,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+    assert first_response.json()["ProjectUID"] != second_response.json()["ProjectUID"]
 
 
 def test_import_project_xml_creates_project_tasks_people_and_event(client):
@@ -101,30 +165,6 @@ def test_import_project_still_succeeds_when_import_event_recording_fails(client)
     assert payload["ProjectName"] == "Advanced Product Launch"
 
 
-def test_create_project_rejects_duplicate_project_uid(client):
-    payload = {
-        "ProjectUID": 1001,
-        "ProjectName": "Documentation rollout",
-        "ProjectManager": "Ava Patel",
-        "CalendarName": "Standard",
-        "Start": "2026-03-01",
-        "Finish": "2026-03-15",
-        "DurationDays": 14,
-        "PercentComplete": 0,
-        "Status": "Not Started",
-        "Priority": "High",
-        "Notes": "Created during pytest coverage.",
-        "SourceFileName": "manual",
-    }
-
-    first_response = client.post("/api/projects", json=payload)
-    duplicate_response = client.post("/api/projects", json=payload)
-
-    assert first_response.status_code == 201
-    assert duplicate_response.status_code == 409
-    assert duplicate_response.json()["detail"] == "ProjectUID already exists."
-
-
 def test_import_project_rejects_non_xml_upload_and_records_failure(client):
     response = client.post(
         "/api/projects/import",
@@ -163,7 +203,6 @@ def test_task_save_derives_duration_from_start_and_finish(client):
     project_response = client.post(
         "/api/projects",
         json={
-            "ProjectUID": 1001,
             "ProjectName": "Duration verification",
             "ProjectManager": "Ava Patel",
             "CalendarName": "Standard",
@@ -178,12 +217,12 @@ def test_task_save_derives_duration_from_start_and_finish(client):
         },
     )
     assert project_response.status_code == 201
+    project_uid = project_response.json()["ProjectUID"]
 
     create_response = client.post(
         "/api/tasks",
         json={
-            "TaskUID": 5001,
-            "ProjectUID": 1001,
+            "ProjectUID": project_uid,
             "TaskName": "Draft project plan",
             "OutlineLevel": 1,
             "OutlineNumber": "1",
@@ -204,11 +243,12 @@ def test_task_save_derives_duration_from_start_and_finish(client):
     assert create_response.status_code == 201
     created_task = create_response.json()
     assert created_task["DurationDays"] == 3
+    created_task_uid = created_task["TaskUID"]
 
     update_response = client.put(
-        "/api/tasks/5001",
+        f"/api/tasks/{created_task_uid}",
         json={
-            "ProjectUID": 1001,
+            "ProjectUID": project_uid,
             "TaskName": "Draft project plan",
             "OutlineLevel": 1,
             "OutlineNumber": "1",
@@ -229,6 +269,121 @@ def test_task_save_derives_duration_from_start_and_finish(client):
     assert update_response.status_code == 200
     updated_task = update_response.json()
     assert updated_task["DurationDays"] == 6
+
+
+def test_create_task_assigns_uid_when_client_omits_it(client):
+    project_response = client.post(
+        "/api/projects",
+        json={
+            "ProjectName": "Task ID generation",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-01",
+            "Finish": "2026-03-15",
+            "DurationDays": 14,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+    assert project_response.status_code == 201
+    project_uid = project_response.json()["ProjectUID"]
+
+    create_response = client.post(
+        "/api/tasks",
+        json={
+            "ProjectUID": project_uid,
+            "TaskName": "Server generated task",
+            "OutlineLevel": 1,
+            "OutlineNumber": "1",
+            "WBS": "1",
+            "IsSummary": False,
+            "Predecessors": "",
+            "ResourceNames": "Ava Patel",
+            "Start": "2026-03-02",
+            "Finish": "2026-03-05",
+            "DurationDays": 3,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "IsMilestone": False,
+            "Notes": "",
+        },
+    )
+
+    assert create_response.status_code == 201
+    created_task = create_response.json()
+    assert created_task["TaskUID"] > 0
+    assert created_task["ProjectUID"] == project_uid
+
+
+def test_create_task_ignores_client_supplied_uid(client):
+    project_response = client.post(
+        "/api/projects",
+        json={
+            "ProjectName": "Ignore task ID payload",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-01",
+            "Finish": "2026-03-15",
+            "DurationDays": 14,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+    assert project_response.status_code == 201
+    project_uid = project_response.json()["ProjectUID"]
+
+    first_response = client.post(
+        "/api/tasks",
+        json={
+            "TaskUID": 5001,
+            "ProjectUID": project_uid,
+            "TaskName": "First generated task",
+            "OutlineLevel": 1,
+            "OutlineNumber": "1",
+            "WBS": "1",
+            "IsSummary": False,
+            "Predecessors": "",
+            "ResourceNames": "Ava Patel",
+            "Start": "2026-03-02",
+            "Finish": "2026-03-05",
+            "DurationDays": 3,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "IsMilestone": False,
+            "Notes": "",
+        },
+    )
+    second_response = client.post(
+        "/api/tasks",
+        json={
+            "TaskUID": 5001,
+            "ProjectUID": project_uid,
+            "TaskName": "Second generated task",
+            "OutlineLevel": 1,
+            "OutlineNumber": "2",
+            "WBS": "2",
+            "IsSummary": False,
+            "Predecessors": "",
+            "ResourceNames": "Ava Patel",
+            "Start": "2026-03-06",
+            "Finish": "2026-03-08",
+            "DurationDays": 2,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "IsMilestone": False,
+            "Notes": "",
+        },
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+    assert first_response.json()["TaskUID"] != second_response.json()["TaskUID"]
 
 
 def test_settings_update_rejects_user_mismatch(client):

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { apiFetch } from '../../../shared/api/http';
+import { apiFetch, isAbortError } from '../../../shared/api/http';
 import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { UserAccessRecord } from '../../../shared/types/models';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
@@ -11,9 +11,25 @@ export function AppLayout() {
     const currentUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
 
     useEffect(() => {
-        apiFetch<UserAccessRecord>(`/admin/access/me?user_name=${encodeURIComponent(currentUserName)}`)
+        const controller = new AbortController();
+
+        // Admin-nav visibility follows the active user. Abort stale requests so
+        // fast user switches cannot let an older response overwrite the newest one.
+        apiFetch<UserAccessRecord>(`/admin/access/me?user_name=${encodeURIComponent(currentUserName)}`, {
+            signal: controller.signal,
+        })
             .then(setUserAccess)
-            .catch(() => setUserAccess(null));
+            .catch((error) => {
+                if (isAbortError(error)) {
+                    return;
+                }
+
+                setUserAccess(null);
+            });
+
+        return () => {
+            controller.abort();
+        };
     }, [currentUserName]);
 
     return (

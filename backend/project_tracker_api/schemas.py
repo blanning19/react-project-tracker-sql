@@ -32,7 +32,7 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    TaskUID: int
+    TaskUID: int | None = None
 
 
 class TaskUpdate(TaskBase):
@@ -67,7 +67,7 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    ProjectUID: int
+    ProjectUID: int | None = None
 
 
 class ProjectUpdate(ProjectBase):

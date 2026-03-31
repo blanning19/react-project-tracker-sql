@@ -125,7 +125,7 @@ export function ProjectDetailPage() {
                                 <h1 className="display-6 fw-semibold mb-2">{project.ProjectName}</h1>
                                 <p className="mb-2 text-body-secondary">
                                     ProjectUID {project.ProjectUID} | Managed by {project.ProjectManager} | Source{' '}
-                                    {project.SourceFileName}
+                                    {project.SourceFileName || 'Manual entry'}
                                 </p>
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>

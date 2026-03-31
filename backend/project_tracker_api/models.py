@@ -17,7 +17,9 @@ def utc_now_naive() -> datetime:
 class Project(Base):
     __tablename__ = "projects"
 
-    ProjectUID: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # Let the database assign project IDs so concurrent creates cannot race on
+    # application-side MAX()+1 logic.
+    ProjectUID: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     ProjectName: Mapped[str] = mapped_column(String(255), nullable=False)
     ProjectManager: Mapped[str] = mapped_column(String(150), nullable=False)
     CreatedDate: Mapped[date] = mapped_column(Date, nullable=False, default=date.today)
@@ -39,7 +41,9 @@ class Project(Base):
 class Task(Base):
     __tablename__ = "tasks"
 
-    TaskUID: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # Task IDs are also database-generated for the same reason as ProjectUID:
+    # the DB is the only safe coordinator when multiple writers exist.
+    TaskUID: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     ProjectUID: Mapped[int] = mapped_column(
         ForeignKey("projects.ProjectUID", ondelete="CASCADE"), nullable=False, index=True
     )

@@ -88,17 +88,34 @@ def ensure_legacy_schema_columns() -> None:
                 connection.execute(text("ALTER TABLE import_events ALTER COLUMN technical_details SET NOT NULL"))
 
             if connection.dialect.name == "postgresql":
-                connection.execute(
-                    text(
-                        """
-                        SELECT setval(
-                            pg_get_serial_sequence('import_events', 'import_event_id'),
-                            COALESCE((SELECT MAX(import_event_id) FROM import_events), 0) + 1,
-                            false
-                        )
-                        """
-                    )
-                )
+                sync_postgres_sequence(connection, "import_events", "import_event_id")
+
+        if connection.dialect.name == "postgresql":
+            if "projects" in table_names:
+                sync_postgres_sequence(connection, "projects", "ProjectUID")
+            if "tasks" in table_names:
+                sync_postgres_sequence(connection, "tasks", "TaskUID")
+
+
+def sync_postgres_sequence(connection, table_name: str, column_name: str) -> None:
+    sequence_name = connection.scalar(
+        text("SELECT pg_get_serial_sequence(:table_name, :column_name)"),
+        {"table_name": table_name, "column_name": column_name},
+    )
+    if not sequence_name:
+        return
+
+    connection.execute(
+        text(
+            f"""
+            SELECT setval(
+                '{sequence_name}',
+                COALESCE((SELECT MAX("{column_name}") FROM {table_name}), 0) + 1,
+                false
+            )
+            """
+        )
+    )
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -64,15 +64,17 @@ export function DashboardPage() {
         setIsSaving(true);
         setError(null);
         try {
-            await apiFetch<ProjectRecord>(projectId ? `/projects/${projectId}` : '/projects', {
+            const savedProject = await apiFetch<ProjectRecord>(projectId ? `/projects/${projectId}` : '/projects', {
                 method: projectId ? 'PUT' : 'POST',
-                body: JSON.stringify(payload),
+                body: JSON.stringify(projectId ? payload : { ...payload, ProjectUID: undefined }),
             });
             setEditingProject(null);
             await loadProjects();
-            setSelectedProjectId(payload.ProjectUID);
+            setSelectedProjectId(savedProject.ProjectUID);
+            return savedProject;
         } catch (saveError) {
             setError(saveError instanceof Error ? saveError.message : 'Unable to save the project.');
+            throw saveError;
         } finally {
             setIsSaving(false);
         }
@@ -82,15 +84,17 @@ export function DashboardPage() {
         setIsSaving(true);
         setError(null);
         try {
-            await apiFetch<TaskRecord>(taskId ? `/tasks/${taskId}` : '/tasks', {
+            const savedTask = await apiFetch<TaskRecord>(taskId ? `/tasks/${taskId}` : '/tasks', {
                 method: taskId ? 'PUT' : 'POST',
-                body: JSON.stringify(payload),
+                body: JSON.stringify(taskId ? payload : { ...payload, TaskUID: undefined }),
             });
             setEditingTask(null);
             await loadProjects();
-            setSelectedProjectId(payload.ProjectUID);
+            setSelectedProjectId(savedTask.ProjectUID);
+            return savedTask;
         } catch (saveError) {
             setError(saveError instanceof Error ? saveError.message : 'Unable to save the task.');
+            throw saveError;
         } finally {
             setIsSaving(false);
         }
@@ -267,7 +271,7 @@ export function DashboardPage() {
                                             <h3 className="h4 mb-1">{project.ProjectName}</h3>
                                             <p className="mb-0 text-body-secondary">
                                                 ProjectUID {project.ProjectUID} � {project.ProjectManager} �{' '}
-                                                {project.SourceFileName}
+                                                {project.SourceFileName || 'Manual entry'}
                                             </p>
                                         </div>
                                         <div className="d-flex gap-2 flex-wrap align-self-start">

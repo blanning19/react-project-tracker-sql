@@ -1,15 +1,17 @@
 import { Alert, Button, Col, Container, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { useProjectData } from '../../dashboard/hooks/useProjectData';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { ProjectForm } from './ProjectForm';
+import { useProjectCreate } from '../hooks/useProjectCreate';
 
 export function ProjectCreatePage() {
     const navigate = useNavigate();
     const { settings, isLoading: isSettingsLoading } = useThemeSettings();
-    const { isLoading, isSaving, error, handleProjectImport, handleProjectSave } = useProjectData(settings);
+    // This page only creates or imports a single project, so it uses a focused
+    // mutation hook instead of loading the entire workspace project list first.
+    const { isSaving, error, handleProjectImport, handleProjectSave } = useProjectCreate(settings);
 
-    if (isLoading || isSettingsLoading) {
+    if (isSettingsLoading) {
         return (
             <div className="min-vh-100 d-flex align-items-center justify-content-center">
                 <Spinner animation="border" role="status" />
@@ -50,12 +52,13 @@ export function ProjectCreatePage() {
                     <ProjectForm
                         project={null}
                         onSave={async (payload) => {
-                            await handleProjectSave(payload);
-                            navigate(`/projects/${payload.ProjectUID}?from=my-dashboard`, {
+                            const savedProject = await handleProjectSave(payload);
+                            navigate(`/projects/${savedProject.ProjectUID}?from=my-dashboard`, {
                                 state: {
-                                    flashMessage: `Project "${payload.ProjectName}" was created successfully.`,
+                                    flashMessage: `Project "${savedProject.ProjectName}" was created successfully.`,
                                 },
                             });
+                            return savedProject;
                         }}
                         onImport={async (file) => {
                             const importedProject = await handleProjectImport(file);

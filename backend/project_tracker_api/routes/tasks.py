@@ -17,9 +17,6 @@ logger = logging.getLogger(__name__)
     summary="Create a task",
 )
 def create_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
-    if crud.get_task(db, payload.TaskUID):
-        logger.warning("Rejected duplicate task create.", extra={"taskUID": payload.TaskUID})
-        raise HTTPException(status_code=409, detail="TaskUID already exists.")
     if not crud.get_project(db, payload.ProjectUID):
         logger.warning(
             "Task create failed due to missing project.",

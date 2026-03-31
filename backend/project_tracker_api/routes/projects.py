@@ -12,6 +12,45 @@ router = APIRouter(tags=["projects"])
 logger = logging.getLogger(__name__)
 
 
+def reject_project_import(
+    db: Session,
+    *,
+    correlation_id: str,
+    user_name: str,
+    source_file_name: str,
+    log_message: str,
+    client_detail: str,
+    failure_reason: str,
+    technical_details: str,
+    log_extra: dict[str, str] | None = None,
+) -> None:
+    # Keep import rejection behavior in one place so the HTTP response, log
+    # entry, and audit trail stay synchronized as validation rules evolve.
+    logger.warning(
+        log_message,
+        extra={
+            "correlationId": correlation_id,
+            "userName": user_name,
+            "sourceFileName": source_file_name,
+            **(log_extra or {}),
+        },
+    )
+    crud.record_import_event(
+        db,
+        correlation_id=correlation_id,
+        source_file_name=source_file_name,
+        imported_by=user_name,
+        status="Failed",
+        project_uid=None,
+        project_name="",
+        task_count=0,
+        message=client_detail,
+        failure_reason=failure_reason,
+        technical_details=technical_details,
+    )
+    raise HTTPException(status_code=400, detail=client_detail)
+
+
 @router.get("/api/projects", response_model=list[schemas.ProjectRead], summary="List projects")
 def list_projects(db: Session = Depends(get_db)):
     return crud.get_projects(db)
@@ -24,9 +63,6 @@ def list_projects(db: Session = Depends(get_db)):
     summary="Create a project",
 )
 def create_project(payload: schemas.ProjectCreate, db: Session = Depends(get_db)):
-    if crud.get_project(db, payload.ProjectUID):
-        logger.warning("Rejected duplicate project create.", extra={"projectUID": payload.ProjectUID})
-        raise HTTPException(status_code=409, detail="ProjectUID already exists.")
     return crud.create_project(db, payload)
 
 
@@ -40,75 +76,44 @@ async def import_project(user_name: str, file: UploadFile = File(...), db: Sessi
     correlation_id = uuid4().hex
     file_name = file.filename or "imported-project.xml"
     if not file_name.lower().endswith(".xml"):
-        failure_reason = "Upload was not an XML file."
-        logger.warning(
-            "Project import rejected because the uploaded file was not XML.",
-            extra={"correlationId": correlation_id, "userName": user_name, "sourceFileName": file_name},
-        )
-        crud.record_import_event(
+        reject_project_import(
             db,
             correlation_id=correlation_id,
+            user_name=user_name,
             source_file_name=file_name,
-            imported_by=user_name,
-            status="Failed",
-            project_uid=None,
-            project_name="",
-            task_count=0,
-            message="Upload a Microsoft Project XML export (.xml).",
-            failure_reason=failure_reason,
+            log_message="Project import rejected because the uploaded file was not XML.",
+            client_detail="Upload a Microsoft Project XML export (.xml).",
+            failure_reason="Upload was not an XML file.",
             technical_details="Expected a file with the .xml extension.",
         )
-        raise HTTPException(status_code=400, detail="Upload a Microsoft Project XML export (.xml).")
 
     file_bytes = await file.read()
     if not file_bytes:
-        failure_reason = "The uploaded XML file was empty."
-        logger.warning(
-            "Project import rejected because the uploaded XML file was empty.",
-            extra={"correlationId": correlation_id, "userName": user_name, "sourceFileName": file_name},
-        )
-        crud.record_import_event(
+        reject_project_import(
             db,
             correlation_id=correlation_id,
+            user_name=user_name,
             source_file_name=file_name,
-            imported_by=user_name,
-            status="Failed",
-            project_uid=None,
-            project_name="",
-            task_count=0,
-            message="The uploaded file is empty.",
-            failure_reason=failure_reason,
+            log_message="Project import rejected because the uploaded XML file was empty.",
+            client_detail="The uploaded file is empty.",
+            failure_reason="The uploaded XML file was empty.",
             technical_details="No bytes were received from the uploaded file.",
         )
-        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
 
     try:
         imported_project = parse_project_xml(file_bytes, file_name, imported_by=user_name)
     except ValueError as exc:
-        failure_reason = "The XML file could not be parsed as a Microsoft Project export."
-        logger.warning(
-            "Project import validation failed.",
-            extra={
-                "correlationId": correlation_id,
-                "userName": user_name,
-                "sourceFileName": file_name,
-                "error": str(exc),
-            },
-        )
-        crud.record_import_event(
+        reject_project_import(
             db,
             correlation_id=correlation_id,
+            user_name=user_name,
             source_file_name=file_name,
-            imported_by=user_name,
-            status="Failed",
-            project_uid=None,
-            project_name="",
-            task_count=0,
-            message=str(exc),
-            failure_reason=failure_reason,
+            log_message="Project import validation failed.",
+            client_detail=str(exc),
+            failure_reason="The XML file could not be parsed as a Microsoft Project export.",
             technical_details=str(exc),
+            log_extra={"error": str(exc)},
         )
-        raise HTTPException(status_code=400, detail=str(exc))
 
     return crud.import_project(db, imported_project, correlation_id=correlation_id)
 

@@ -95,16 +95,6 @@ def get_projects(db: Session) -> list[schemas.ProjectRead]:
     return [serialize_project(project) for project in projects]
 
 
-def get_next_project_uid(db: Session) -> int:
-    current_max = db.scalar(select(func.max(models.Project.ProjectUID)))
-    return (current_max or 1000) + 1
-
-
-def get_next_task_uid(db: Session) -> int:
-    current_max = db.scalar(select(func.max(models.Task.TaskUID)))
-    return (current_max or 5000) + 1
-
-
 def get_next_member_id(db: Session) -> int:
     current_max = db.scalar(select(func.max(models.TeamMember.member_id)))
     return (current_max or 0) + 1
@@ -143,7 +133,6 @@ def ensure_team_members_exist(db: Session, names: list[str]) -> None:
 def import_project(
     db: Session, imported_project: ImportedProject, *, correlation_id: str | None = None
 ) -> schemas.ProjectRead:
-    project_uid = get_next_project_uid(db)
     ensure_manager_exists(db, imported_project.manager)
 
     team_member_names = sorted(
@@ -158,7 +147,6 @@ def import_project(
         ensure_team_members_exist(db, team_member_names)
 
     project = models.Project(
-        ProjectUID=project_uid,
         ProjectName=imported_project.name,
         ProjectManager=imported_project.manager,
         CreatedDate=date.today(),
@@ -174,12 +162,11 @@ def import_project(
     )
     db.add(project)
     db.flush()
+    project_uid = project.ProjectUID
 
-    next_task_uid = get_next_task_uid(db)
     for imported_task in imported_project.tasks:
         db.add(
             models.Task(
-                TaskUID=next_task_uid,
                 ProjectUID=project_uid,
                 TaskName=imported_task.name,
                 OutlineLevel=imported_task.outline_level,
@@ -197,7 +184,6 @@ def import_project(
                 Notes=imported_task.notes,
             )
         )
-        next_task_uid += 1
 
     sync_project_metrics(db, project)
     commit_with_rollback(
@@ -249,12 +235,12 @@ def get_project(db: Session, project_id: int) -> models.Project | None:
 
 
 def create_project(db: Session, payload: schemas.ProjectCreate) -> schemas.ProjectRead:
-    project_data = payload.model_dump()
+    project_data = payload.model_dump(exclude={"ProjectUID"})
     project_data["DurationDays"] = calculate_duration_days(payload.Start, payload.Finish)
     project_data["PercentComplete"] = 0
     project = models.Project(**project_data)
     db.add(project)
-    commit_with_rollback(db, "Failed to create project.", project_uid=payload.ProjectUID)
+    commit_with_rollback(db, "Failed to create project.", project_uid=project.ProjectUID)
     db.refresh(project)
     logger.info("Created project.", extra={"projectUID": project.ProjectUID})
     return serialize_project(get_project(db, project.ProjectUID))
@@ -282,7 +268,7 @@ def get_task(db: Session, task_id: int) -> models.Task | None:
 
 
 def create_task(db: Session, payload: schemas.TaskCreate) -> schemas.TaskRead:
-    task_data = payload.model_dump()
+    task_data = payload.model_dump(exclude={"TaskUID"})
     task_data["DurationDays"] = calculate_duration_days(payload.Start, payload.Finish)
     task = models.Task(**task_data)
     db.add(task)
@@ -290,7 +276,7 @@ def create_task(db: Session, payload: schemas.TaskCreate) -> schemas.TaskRead:
     project = get_project(db, task.ProjectUID)
     if project:
         sync_project_metrics(db, project)
-    commit_with_rollback(db, "Failed to create task.", task_uid=payload.TaskUID, project_uid=payload.ProjectUID)
+    commit_with_rollback(db, "Failed to create task.", task_uid=task.TaskUID, project_uid=payload.ProjectUID)
     db.refresh(task)
     logger.info("Created task.", extra={"taskUID": task.TaskUID, "projectUID": task.ProjectUID})
     return serialize_task(task)

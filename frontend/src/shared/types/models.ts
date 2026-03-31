@@ -121,5 +121,10 @@ export interface ProjectRecord {
     tasks: TaskRecord[];
 }
 
-export type ProjectPayload = Omit<ProjectRecord, 'tasks' | 'IsOverdue' | 'CreatedDate'>;
-export type TaskPayload = Omit<TaskRecord, 'IsOverdue'>;
+export type ProjectPayload = Omit<ProjectRecord, 'tasks' | 'IsOverdue' | 'CreatedDate' | 'ProjectUID'> & {
+    ProjectUID?: number;
+};
+
+export type TaskPayload = Omit<TaskRecord, 'IsOverdue' | 'TaskUID'> & {
+    TaskUID?: number;
+};

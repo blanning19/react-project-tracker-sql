@@ -1,11 +1,11 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
-import { apiFetch } from '../../../shared/api/http';
+import { apiFetch, isAbortError } from '../../../shared/api/http';
 import { ManagerRecord, ProjectPayload, ProjectRecord } from '../../../shared/types/models';
 
 interface ProjectFormProps {
     project?: ProjectRecord | null;
-    onSave: (payload: ProjectPayload, projectId?: number) => Promise<void>;
+    onSave: (payload: ProjectPayload, projectId?: number) => Promise<ProjectRecord>;
     onImport?: (file: File) => Promise<void>;
     onClear: () => void;
     showCreateAction?: boolean;
@@ -14,18 +14,19 @@ interface ProjectFormProps {
 }
 
 const createEmptyProject = (): ProjectPayload => ({
-    ProjectUID: 0,
+    // Manual projects start "today" and default to a 90-day planning horizon so
+    // new entries feel realistic without forcing users to pick dates immediately.
     ProjectName: '',
     ProjectManager: '',
     CalendarName: '',
     Start: new Date().toISOString().slice(0, 10),
-    Finish: new Date().toISOString().slice(0, 10),
-    DurationDays: 1,
+    Finish: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    DurationDays: 90,
     PercentComplete: 0,
     Status: 'Not Started',
     Priority: 'Medium',
     Notes: '',
-    SourceFileName: 'demo-project.mpp',
+    SourceFileName: '',
 });
 
 function toEditableProject(project: ProjectRecord): ProjectPayload {
@@ -81,9 +82,21 @@ export function ProjectForm({
     }, [project]);
 
     useEffect(() => {
-        apiFetch<ManagerRecord[]>('/managers')
+        const controller = new AbortController();
+
+        apiFetch<ManagerRecord[]>('/managers', { signal: controller.signal })
             .then(setManagers)
-            .catch(() => setManagers([]));
+            .catch((error) => {
+                if (isAbortError(error)) {
+                    return;
+                }
+
+                setManagers([]);
+            });
+
+        return () => {
+            controller.abort();
+        };
     }, []);
 
     const calculatedDurationDays = useMemo(
@@ -186,10 +199,15 @@ export function ProjectForm({
                         <Col md={12}>
                             <Form.Group>
                                 <Form.Label className="fw-semibold">Source File</Form.Label>
-                                <Form.Control value={formState.SourceFileName} readOnly disabled={readOnly} />
+                                <Form.Control
+                                    value={formState.SourceFileName}
+                                    placeholder="Not imported from a file"
+                                    readOnly
+                                    disabled={readOnly}
+                                />
                                 <Form.Text className="text-body-secondary">
-                                    The original file name helps trace whether this project was created manually or
-                                    imported.
+                                    Imported projects keep their original file name. Manually created projects leave
+                                    this blank.
                                 </Form.Text>
                             </Form.Group>
                         </Col>

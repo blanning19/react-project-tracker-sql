@@ -1,4 +1,4 @@
-import { apiFetch } from './http';
+import { apiFetch, isAbortError } from './http';
 
 describe('apiFetch', () => {
     afterEach(() => {
@@ -22,5 +22,12 @@ describe('apiFetch', () => {
         await expect(apiFetch('/projects')).rejects.toThrow(
             'The backend is unavailable or a network problem occurred. Failed to fetch',
         );
+    });
+
+    it('preserves abort errors so callers can ignore canceled requests', async () => {
+        vi.spyOn(globalThis, 'fetch').mockRejectedValue(new DOMException('The request was aborted.', 'AbortError'));
+
+        const error = await apiFetch('/projects').catch((caught) => caught);
+        expect(isAbortError(error)).toBe(true);
     });
 });

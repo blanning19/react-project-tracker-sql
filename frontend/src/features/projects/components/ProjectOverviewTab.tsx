@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Badge, Button, Card, Col, Row } from 'react-bootstrap';
-import { ProjectRecord } from '../../../shared/types/models';
+import { ProjectPayload, ProjectRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
 import { ProjectForm } from './ProjectForm';
 import { buildPhaseSummaries } from './projectDetailUtils';
@@ -9,10 +9,7 @@ interface ProjectOverviewTabProps {
     isOwner: boolean;
     isSaving: boolean;
     onDeleteProject: () => Promise<void>;
-    onProjectSave: (
-        payload: Omit<ProjectRecord, 'tasks' | 'IsOverdue' | 'CreatedDate'>,
-        projectId?: number,
-    ) => Promise<void>;
+    onProjectSave: (payload: ProjectPayload, projectId?: number) => Promise<ProjectRecord>;
     onSetEditingProject: () => void;
     project: ProjectRecord;
     projectForForm: ProjectRecord | null;

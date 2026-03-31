@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
-import { apiFetch } from '../../../shared/api/http';
+import { apiFetch, isAbortError } from '../../../shared/api/http';
 import { ProjectRecord, TaskPayload, TaskRecord, TeamMemberRecord } from '../../../shared/types/models';
 import { parseAssigneeNames } from '../../../shared/utils/assignees';
 
@@ -8,13 +8,12 @@ interface TaskFormProps {
     task?: TaskRecord | null;
     projects: ProjectRecord[];
     activeProjectId?: number;
-    onSave: (payload: TaskPayload, taskId?: number) => Promise<void>;
+    onSave: (payload: TaskPayload, taskId?: number) => Promise<TaskRecord>;
     onClear: () => void;
     showCreateAction?: boolean;
 }
 
 const createEmptyTask = (projectId?: number): TaskPayload => ({
-    TaskUID: 0,
     ProjectUID: projectId ?? 0,
     TaskName: '',
     OutlineLevel: 1,
@@ -74,9 +73,21 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
     }, [activeProjectId, task]);
 
     useEffect(() => {
-        apiFetch<TeamMemberRecord[]>('/team-members')
+        const controller = new AbortController();
+
+        apiFetch<TeamMemberRecord[]>('/team-members', { signal: controller.signal })
             .then(setTeamMembers)
-            .catch(() => setTeamMembers([]));
+            .catch((error) => {
+                if (isAbortError(error)) {
+                    return;
+                }
+
+                setTeamMembers([]);
+            });
+
+        return () => {
+            controller.abort();
+        };
     }, []);
 
     const activeProject = projects.find((project) => project.ProjectUID === formState.ProjectUID);

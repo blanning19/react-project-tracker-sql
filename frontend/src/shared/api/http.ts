@@ -1,5 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api';
 
+export function isAbortError(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError';
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
     const headers = new Headers(options.headers ?? {});
     const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
@@ -14,6 +18,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
             headers,
         });
     } catch (error) {
+        if (isAbortError(error)) {
+            throw error;
+        }
+
         const message =
             error instanceof Error && error.message
                 ? `The backend is unavailable or a network problem occurred. ${error.message}`

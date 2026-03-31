@@ -137,13 +137,15 @@ export function useProjectData(settings: UserSettings | null) {
         try {
             const savedProject = await apiFetch<ProjectRecord>(projectId ? `/projects/${projectId}` : '/projects', {
                 method: projectId ? 'PUT' : 'POST',
-                body: JSON.stringify(payload),
+                body: JSON.stringify(projectId ? payload : { ...payload, ProjectUID: undefined }),
             });
             setEditingProject(null);
             setProjects((currentProjects) => upsertProject(currentProjects, savedProject));
             setSelectedProjectId(savedProject.ProjectUID);
+            return savedProject;
         } catch (saveError) {
             setError(saveError instanceof Error ? saveError.message : 'Unable to save the project.');
+            throw saveError;
         } finally {
             setIsSaving(false);
         }
@@ -183,15 +185,17 @@ export function useProjectData(settings: UserSettings | null) {
         try {
             const savedTask = await apiFetch<TaskRecord>(taskId ? `/tasks/${taskId}` : '/tasks', {
                 method: taskId ? 'PUT' : 'POST',
-                body: JSON.stringify(payload),
+                body: JSON.stringify(taskId ? payload : { ...payload, TaskUID: undefined }),
             });
             setEditingTask(null);
             // Task saves update only the affected project graph locally, which is
             // much cheaper than reloading the full workspace list every time.
             setProjects((currentProjects) => upsertTask(currentProjects, savedTask));
             setSelectedProjectId(savedTask.ProjectUID);
+            return savedTask;
         } catch (saveError) {
             setError(saveError instanceof Error ? saveError.message : 'Unable to save the task.');
+            throw saveError;
         } finally {
             setIsSaving(false);
         }
