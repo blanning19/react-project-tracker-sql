@@ -1,8 +1,4 @@
-export function getStatusClass(status: string, isOverdue?: boolean) {
-    if (isOverdue) {
-        return 'danger';
-    }
-
+export function getStatusClass(status: string) {
     switch (status.toLowerCase()) {
         case 'completed':
             return 'success';

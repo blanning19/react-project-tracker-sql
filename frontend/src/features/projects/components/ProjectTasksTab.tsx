@@ -1,26 +1,33 @@
 import { Alert, Badge, Button, Card, Table } from 'react-bootstrap';
 import { TaskRecord } from '../../../shared/types/models';
+import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 import { renderDependencyBadges } from './projectDetailUtils';
 
 interface ProjectTasksTabProps {
+    currentUserName: string;
     isOwner: boolean;
     isSaving: boolean;
     isTaskOpen: boolean;
+    modeLabel: string;
     onDeleteTask: (taskId: number) => Promise<void>;
     onEditTask: (task: TaskRecord) => void;
+    onViewTask: (task: TaskRecord) => void;
     onNewTask: () => void;
     taskLookup: Map<string, string>;
     visibleTasks: TaskRecord[];
 }
 
 export function ProjectTasksTab({
+    currentUserName,
     isOwner,
     isSaving,
     isTaskOpen,
+    modeLabel,
     onDeleteTask,
     onEditTask,
+    onViewTask,
     onNewTask,
     taskLookup,
     visibleTasks,
@@ -43,11 +50,14 @@ export function ProjectTasksTab({
                             </p>
                         ) : null}
                     </div>
-                    {isOwner && !isTaskOpen ? (
-                        <Button variant="outline-success" onClick={onNewTask}>
-                            New Task
-                        </Button>
-                    ) : null}
+                    <div className="d-flex gap-2 align-items-center flex-wrap">
+                        <Badge bg={isTaskOpen ? 'warning' : 'info'}>{modeLabel}</Badge>
+                        {isOwner && !isTaskOpen ? (
+                            <Button variant="outline-success" onClick={onNewTask}>
+                                New Task
+                            </Button>
+                        ) : null}
+                    </div>
                 </div>
 
                 <div className="table-responsive">
@@ -64,7 +74,10 @@ export function ProjectTasksTab({
                             </tr>
                         </thead>
                         <tbody>
-                            {visibleTasks.map((task) => (
+                            {visibleTasks.map((task) => {
+                                const canEditTask = isOwner || isTaskAssignedToUser(task.ResourceNames, currentUserName);
+
+                                return (
                                 <tr key={task.TaskUID}>
                                     <td>
                                         <div
@@ -91,19 +104,32 @@ export function ProjectTasksTab({
                                     <td>{task.ResourceNames || 'Unassigned'}</td>
                                     <td>{renderDependencyBadges(task.Predecessors, taskLookup)}</td>
                                     <td>
-                                        <Badge bg={getStatusClass(task.Status, task.IsOverdue)}>{task.Status}</Badge>
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                                            <Badge bg={getStatusClass(task.Status)}>{task.Status}</Badge>
+                                            {task.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                        </div>
                                     </td>
                                     <td>{formatDate(task.Finish)}</td>
                                     <td>{task.PercentComplete}%</td>
                                     <td className="text-end">
                                         <div className="d-flex gap-2 justify-content-end flex-wrap">
-                                            <Button
-                                                variant="outline-primary"
-                                                size="sm"
-                                                onClick={() => onEditTask(task)}
-                                            >
-                                                Edit
-                                            </Button>
+                                            {canEditTask ? (
+                                                <Button
+                                                    variant="outline-primary"
+                                                    size="sm"
+                                                    onClick={() => onEditTask(task)}
+                                                >
+                                                    Edit
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="outline-secondary"
+                                                    size="sm"
+                                                    onClick={() => onViewTask(task)}
+                                                >
+                                                    View
+                                                </Button>
+                                            )}
                                             {isOwner ? (
                                                 <Button
                                                     variant="outline-danger"
@@ -117,7 +143,8 @@ export function ProjectTasksTab({
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
                         </tbody>
                     </Table>
                 </div>

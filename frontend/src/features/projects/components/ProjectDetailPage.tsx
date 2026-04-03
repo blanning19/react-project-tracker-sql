@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Container, Nav, Row, Spinner } from 'react-bootstrap';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
 import { getStatusClass } from '../../../shared/utils/status';
 import { useProjectData } from '../../dashboard/hooks/useProjectData';
+import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { TaskForm } from '../../tasks/components/TaskForm';
 import { ProjectOverviewTab } from './ProjectOverviewTab';
@@ -20,7 +20,8 @@ export function ProjectDetailPage() {
     const parsedProjectId = Number(projectId);
     const selectedTaskId = Number(searchParams.get('taskId'));
     const origin = searchParams.get('from');
-    const { settings, isLoading: isSettingsLoading } = useThemeSettings();
+    const { preferences, isLoading: isSettingsLoading } = useThemeSettings();
+    const { currentUserName, isLoading: isCurrentUserLoading } = useCurrentUser();
     const {
         projects,
         setSelectedProjectId,
@@ -35,7 +36,7 @@ export function ProjectDetailPage() {
         handleTaskSave,
         handleDeleteProject,
         handleDeleteTask,
-    } = useProjectData(settings);
+    } = useProjectData(preferences);
     const [activeTab, setActiveTab] = useState('overview');
 
     const project = useMemo(
@@ -43,7 +44,6 @@ export function ProjectDetailPage() {
         [parsedProjectId, projects],
     );
     const projectForForm = editingProject ?? project ?? null;
-    const currentUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
     const isOwner = project?.ProjectManager.toLowerCase() === currentUserName.toLowerCase();
     const visibleTasks = useMemo(() => project?.tasks ?? [], [project]);
     // Shared timeline/task helpers were extracted so the detail page can focus on
@@ -54,6 +54,7 @@ export function ProjectDetailPage() {
     const canEditSelectedTask = editingTask
         ? isOwner || isTaskAssignedToUser(editingTask.ResourceNames, currentUserName)
         : false;
+    const canViewSelectedTask = Boolean(editingTask);
     const isTaskOpen = Boolean(editingTask);
     const backPath = origin === 'home' ? '/' : '/my-dashboard';
     const backLabel = origin === 'home' ? 'Back to Home' : 'Back to My Dashboard';
@@ -61,6 +62,49 @@ export function ProjectDetailPage() {
         typeof location.state === 'object' && location.state && 'flashMessage' in location.state
             ? String(location.state.flashMessage)
             : null;
+    const modeSummary = useMemo(() => {
+        if (activeTab === 'edit-task') {
+            return canEditSelectedTask
+                ? {
+                      label: 'Edit Mode',
+                      badge: 'warning' as const,
+                      title: 'You are editing a task.',
+                      description: 'Task fields are live. Save or cancel to return to the task plan view.',
+                  }
+                : {
+                      label: 'View Mode',
+                      badge: 'secondary' as const,
+                      title: 'This task is view only.',
+                      description: 'You can inspect the task details here, but editing stays limited to owners and assigned users.',
+                  };
+        }
+
+        if (activeTab === 'overview') {
+            return isOwner
+                ? {
+                      label: 'Edit Enabled',
+                      badge: 'success' as const,
+                      title: 'Project details are editable in this tab.',
+                      description: 'The overview form is live for project owners, so changes here update the project directly.',
+                  }
+                : {
+                      label: 'View Only',
+                      badge: 'secondary' as const,
+                      title: 'Project details are read only.',
+                      description: 'You can review the project summary here, but only the project owner can change the overview fields.',
+                  };
+        }
+
+        return {
+            label: 'View Mode',
+            badge: 'info' as const,
+            title: activeTab === 'tasks' ? 'You are browsing the task plan.' : 'You are reviewing the timeline.',
+            description:
+                activeTab === 'tasks'
+                    ? 'Use this table to inspect work, assignments, and dependencies before opening a specific task for editing.'
+                    : 'The timeline stays presentation-focused so schedule review is separate from editing.',
+        };
+    }, [activeTab, canEditSelectedTask, isOwner]);
 
     async function handleProjectDelete() {
         await handleDeleteProject(parsedProjectId);
@@ -95,7 +139,7 @@ export function ProjectDetailPage() {
         }
     }, [activeTab, editingTask]);
 
-    if (isLoading || isSettingsLoading) {
+    if (isLoading || isSettingsLoading || isCurrentUserLoading) {
         return (
             <div className="min-vh-100 d-flex align-items-center justify-content-center">
                 <Spinner animation="border" role="status" />
@@ -128,7 +172,8 @@ export function ProjectDetailPage() {
                                     {project.SourceFileName || 'Manual entry'}
                                 </p>
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                                    <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>
+                                    <Badge bg={modeSummary.badge}>{modeSummary.label}</Badge>
+                                    <Badge bg={getStatusClass(project.Status)}>
                                         {project.Status}
                                     </Badge>
                                     {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
@@ -142,6 +187,23 @@ export function ProjectDetailPage() {
                             </div>
                         </div>
                     </div>
+                </Col>
+            </Row>
+
+            <Row className="g-4 mb-4">
+                <Col xl={12}>
+                    <Card className="shadow-sm border-0 dashboard-panel project-mode-panel">
+                        <Card.Body className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
+                            <div>
+                                <p className="text-uppercase small text-body-secondary mb-1">Current Mode</p>
+                                <h2 className="h5 mb-1">{modeSummary.title}</h2>
+                                <p className="mb-0 text-body-secondary">{modeSummary.description}</p>
+                            </div>
+                            <Badge bg={modeSummary.badge} className="project-mode-pill align-self-start align-self-lg-center">
+                                {modeSummary.label}
+                            </Badge>
+                        </Card.Body>
+                    </Card>
                 </Col>
             </Row>
 
@@ -191,6 +253,7 @@ export function ProjectDetailPage() {
                 <ProjectOverviewTab
                     isOwner={isOwner}
                     isSaving={isSaving}
+                    modeLabel={modeSummary.label}
                     onDeleteProject={handleProjectDelete}
                     onProjectSave={handleProjectSave}
                     onSetEditingProject={() => setEditingProject(project)}
@@ -201,7 +264,7 @@ export function ProjectDetailPage() {
 
             {activeTab === 'timeline' ? <ProjectTimelineTab project={project} /> : null}
 
-            {activeTab === 'edit-task' && canEditSelectedTask ? (
+            {activeTab === 'edit-task' && canViewSelectedTask ? (
                 <Row className="g-4">
                     <Col lg={12}>
                         <TaskForm
@@ -209,6 +272,7 @@ export function ProjectDetailPage() {
                             projects={[project]}
                             activeProjectId={project.ProjectUID}
                             onSave={handleTaskSave}
+                            readOnly={!canEditSelectedTask}
                             onClear={() => {
                                 setEditingTask(null);
                                 setActiveTab('tasks');
@@ -217,23 +281,22 @@ export function ProjectDetailPage() {
                         />
                     </Col>
                 </Row>
-            ) : activeTab === 'edit-task' ? (
-                <Row className="g-4">
-                    <Col lg={12}>
-                        <Alert variant="warning" className="mb-0">
-                            You do not have permission to edit this task.
-                        </Alert>
-                    </Col>
-                </Row>
             ) : null}
 
             {activeTab === 'tasks' ? (
                 <ProjectTasksTab
+                    currentUserName={currentUserName}
                     isOwner={isOwner}
                     isSaving={isSaving}
                     isTaskOpen={isTaskOpen}
+                    modeLabel={modeSummary.label}
                     onDeleteTask={handleDeleteTask}
                     onEditTask={(task) => {
+                        setSelectedProjectId(project.ProjectUID);
+                        setEditingTask(task);
+                        setActiveTab('edit-task');
+                    }}
+                    onViewTask={(task) => {
                         setSelectedProjectId(project.ProjectUID);
                         setEditingTask(task);
                         setActiveTab('edit-task');

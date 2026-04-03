@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Card, Col, Container, Nav, Row, Spinner } from 'react-bootstrap';
+import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { apiFetch } from '../../../shared/api/http';
-import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { EnvironmentSummaryRecord, ImportEventRecord, UserAccessRecord } from '../../../shared/types/models';
-import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { AccessTab } from './AccessTab';
 import { AdminTabKey, ImportFilterRange } from './adminTypes';
 import { copyToClipboard, formatRoleLabel, isImportWithinRange } from './adminUtils';
@@ -12,9 +11,7 @@ import { ImportsTab } from './ImportsTab';
 import { LogsTab } from './LogsTab';
 
 export function AdminPage() {
-    const { settings, isLoading } = useThemeSettings();
-    const currentUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
-    const [accessRecord, setAccessRecord] = useState<UserAccessRecord | null>(null);
+    const { currentUserName, userAccess, isLoading } = useCurrentUser();
     const [environmentSummary, setEnvironmentSummary] = useState<EnvironmentSummaryRecord | null>(null);
     const [importEvents, setImportEvents] = useState<ImportEventRecord[]>([]);
     const [userAccessList, setUserAccessList] = useState<UserAccessRecord[]>([]);
@@ -26,31 +23,22 @@ export function AdminPage() {
     const [activeTab, setActiveTab] = useState<AdminTabKey>('imports');
     const [importFilter, setImportFilter] = useState<ImportFilterRange>('30d');
 
-    // After the page was split into tab components, the parent keeps ownership of
-    // the shared data fetch so each tab stays presentational and easier to test.
+    // The dedicated current-user context now owns identity and access, so the
+    // admin page only has to fetch the datasets that power its tabs.
     const loadAdminData = useCallback(async () => {
         setIsPageLoading(true);
         setLoadError(null);
 
         try {
-            const currentAccess = await apiFetch<UserAccessRecord>(
-                `/admin/access/me?user_name=${encodeURIComponent(currentUserName)}`,
-            );
-            setAccessRecord(currentAccess);
-
-            if (!currentAccess.canViewAdmin) {
+            if (!userAccess?.canViewAdmin) {
                 setEnvironmentSummary(null);
                 setImportEvents([]);
                 setUserAccessList([]);
                 return;
             }
 
-            // These datasets power independent tabs, so loading them in parallel
-            // keeps the admin shell responsive without coupling the tab components.
             const [nextEnvironmentSummary, nextImportEvents, nextUserAccessList] = await Promise.all([
-                apiFetch<EnvironmentSummaryRecord>(
-                    `/admin/environment?user_name=${encodeURIComponent(currentUserName)}`,
-                ),
+                apiFetch<EnvironmentSummaryRecord>(`/admin/environment?user_name=${encodeURIComponent(currentUserName)}`),
                 apiFetch<ImportEventRecord[]>(`/admin/import-events?user_name=${encodeURIComponent(currentUserName)}`),
                 apiFetch<UserAccessRecord[]>(`/admin/access?user_name=${encodeURIComponent(currentUserName)}`),
             ]);
@@ -63,7 +51,7 @@ export function AdminPage() {
         } finally {
             setIsPageLoading(false);
         }
-    }, [currentUserName]);
+    }, [currentUserName, userAccess?.canViewAdmin]);
 
     useEffect(() => {
         if (isLoading) {
@@ -82,8 +70,6 @@ export function AdminPage() {
         [filteredImportEvents],
     );
 
-    // The page keeps a tiny derived summary so the imports tab can show trend
-    // information without needing a second API endpoint.
     const filteredImportSummary = useMemo(() => {
         const successfulImports = filteredImportEvents.filter(
             (importEvent) => importEvent.status === 'Succeeded',
@@ -98,19 +84,11 @@ export function AdminPage() {
         };
     }, [filteredFailureEvents, filteredImportEvents]);
 
-    // Save callbacks update local state in-place so admins immediately see the
-    // result of a permission change without paying for a full page refetch.
-    const handleAccessSaved = useCallback(
-        (nextRecord: UserAccessRecord) => {
-            setUserAccessList((previousList) =>
-                previousList.map((record) => (record.userName === nextRecord.userName ? nextRecord : record)),
-            );
-            if (nextRecord.userName === currentUserName) {
-                setAccessRecord(nextRecord);
-            }
-        },
-        [currentUserName],
-    );
+    const handleAccessSaved = useCallback((nextRecord: UserAccessRecord) => {
+        setUserAccessList((previousList) =>
+            previousList.map((record) => (record.userName === nextRecord.userName ? nextRecord : record)),
+        );
+    }, []);
 
     const handleCopyCorrelationId = useCallback(async (correlationId: string) => {
         try {
@@ -124,8 +102,6 @@ export function AdminPage() {
         }
     }, []);
 
-    // Import cards hand the log tab enough context to load only the lines
-    // tied to the selected failure instead of dumping a broad time window.
     const handleViewLogContext = useCallback((importEvent: ImportEventRecord) => {
         setSelectedLogTimestamp(importEvent.createdAt);
         setSelectedLogCorrelationId(importEvent.correlationId || null);
@@ -145,7 +121,7 @@ export function AdminPage() {
         );
     }
 
-    if (!accessRecord?.canViewAdmin) {
+    if (!userAccess?.canViewAdmin) {
         return (
             <Container fluid="xl" className="pt-3 pt-lg-4 pb-4 pb-lg-5">
                 <Row className="g-4 align-items-stretch mb-4">
@@ -208,7 +184,7 @@ export function AdminPage() {
                                     <p className="text-uppercase small text-body-secondary mb-1">Admin Context</p>
                                     <h2 className="h5 mb-1">Current workspace access</h2>
                                     <p className="mb-0 small text-body-secondary">
-                                        Signed in as {currentUserName} with role {formatRoleLabel(accessRecord.role)}.
+                                        Signed in as {currentUserName} with role {formatRoleLabel(userAccess.role)}.
                                     </p>
                                 </div>
                                 <div className="small text-body-secondary text-lg-end">
@@ -269,7 +245,7 @@ export function AdminPage() {
 
             {activeTab === 'logs' ? (
                 <LogsTab
-                    canViewLogs={accessRecord.canViewLogs}
+                    canViewLogs={userAccess.canViewLogs}
                     currentUserName={currentUserName}
                     selectedLogTimestamp={selectedLogTimestamp}
                     selectedLogCorrelationId={selectedLogCorrelationId}

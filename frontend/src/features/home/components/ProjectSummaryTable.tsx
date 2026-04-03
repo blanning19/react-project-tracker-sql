@@ -76,9 +76,10 @@ export function ProjectSummaryTable({
                                     <td>{project.ProjectManager}</td>
                                     <td>{formatDate(project.CreatedDate)}</td>
                                     <td>
-                                        <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>
-                                            {project.Status}
-                                        </Badge>
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                                            <Badge bg={getStatusClass(project.Status)}>{project.Status}</Badge>
+                                            {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                        </div>
                                     </td>
                                     <td>{formatDate(project.Finish)}</td>
                                     <td>

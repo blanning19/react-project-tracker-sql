@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { apiFetch } from '../../../shared/api/http';
-import { DEFAULT_USER_NAME } from '../../../shared/config/app';
-import { ProjectPayload, ProjectRecord, UserSettings } from '../../../shared/types/models';
+import { ProjectPayload, ProjectRecord } from '../../../shared/types/models';
 
 interface UseProjectCreateResult {
     error: string | null;
@@ -10,7 +9,7 @@ interface UseProjectCreateResult {
     handleProjectSave: (payload: ProjectPayload) => Promise<ProjectRecord>;
 }
 
-export function useProjectCreate(settings: UserSettings | null): UseProjectCreateResult {
+export function useProjectCreate(currentUserName: string): UseProjectCreateResult {
     const [error, setError] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -39,10 +38,9 @@ export function useProjectCreate(settings: UserSettings | null): UseProjectCreat
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const importUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
             // Imports also stay in the lightweight create flow so `/projects/new`
             // can remain fast and independent from the larger project-data hook.
-            return await apiFetch<ProjectRecord>(`/projects/import?user_name=${encodeURIComponent(importUserName)}`, {
+            return await apiFetch<ProjectRecord>(`/projects/import?user_name=${encodeURIComponent(currentUserName)}`, {
                 method: 'POST',
                 body: formData,
             });

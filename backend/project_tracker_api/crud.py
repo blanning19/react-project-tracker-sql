@@ -336,9 +336,12 @@ def get_or_create_settings(db: Session, user_id: str) -> models.UserSetting:
 
 
 def serialize_settings(setting: models.UserSetting) -> schemas.UserSettingsRead:
+    settings = get_settings()
     return schemas.UserSettingsRead(
         userId=setting.user_id,
-        currentUserName=setting.current_user_name,
+        # The active workspace user now comes from backend configuration so the
+        # app has a single source of truth instead of competing frontend and DB defaults.
+        currentUserName=settings.default_user_name,
         theme=setting.theme,
         dashboardSortField=setting.dashboard_sort_field,
         dashboardSortDirection=setting.dashboard_sort_direction,
@@ -348,7 +351,9 @@ def serialize_settings(setting: models.UserSetting) -> schemas.UserSettingsRead:
 def update_settings(
     db: Session, setting: models.UserSetting, payload: schemas.UserSettingsUpdate
 ) -> schemas.UserSettingsRead:
-    setting.current_user_name = payload.currentUserName
+    # Keep the legacy column in place for compatibility, but treat the backend
+    # environment setting as the only configured source of truth for the active user.
+    setting.current_user_name = get_settings().default_user_name
     setting.theme = payload.theme
     setting.dashboard_sort_field = payload.dashboardSortField
     setting.dashboard_sort_direction = payload.dashboardSortDirection

@@ -8,6 +8,7 @@ import { buildPhaseSummaries } from './projectDetailUtils';
 interface ProjectOverviewTabProps {
     isOwner: boolean;
     isSaving: boolean;
+    modeLabel: string;
     onDeleteProject: () => Promise<void>;
     onProjectSave: (payload: ProjectPayload, projectId?: number) => Promise<ProjectRecord>;
     onSetEditingProject: () => void;
@@ -18,6 +19,7 @@ interface ProjectOverviewTabProps {
 export function ProjectOverviewTab({
     isOwner,
     isSaving,
+    modeLabel,
     onDeleteProject,
     onProjectSave,
     onSetEditingProject,
@@ -33,6 +35,23 @@ export function ProjectOverviewTab({
 
     return (
         <>
+            <Card className="shadow-sm border-0 dashboard-panel mb-4 project-mode-section">
+                <Card.Body className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
+                    <div>
+                        <p className="text-uppercase small text-body-secondary mb-1">Overview Panel</p>
+                        <h2 className="h5 mb-1">{isOwner ? 'Project form is editable.' : 'Project form is locked.'}</h2>
+                        <p className="mb-0 text-body-secondary">
+                            {isOwner
+                                ? 'This owner-facing form stays live so project details can be updated without leaving the overview tab.'
+                                : 'This section stays in read-only form layout so non-owners can review the same details without making accidental changes.'}
+                        </p>
+                    </div>
+                    <Badge bg={isOwner ? 'success' : 'secondary'} className="project-mode-pill align-self-start align-self-lg-center">
+                        {modeLabel}
+                    </Badge>
+                </Card.Body>
+            </Card>
+
             <Row className="g-3 mb-4">
                 <Col md={6} xl={3}>
                     <Card className="shadow-sm border-0 dashboard-panel h-100">

@@ -11,6 +11,7 @@ interface TaskFormProps {
     onSave: (payload: TaskPayload, taskId?: number) => Promise<TaskRecord>;
     onClear: () => void;
     showCreateAction?: boolean;
+    readOnly?: boolean;
 }
 
 const createEmptyTask = (projectId?: number): TaskPayload => ({
@@ -60,7 +61,15 @@ function calculateDurationDays(start: string, finish: string): number {
     return Math.max(1, diffInDays);
 }
 
-export function TaskForm({ task, projects, activeProjectId, onSave, onClear, showCreateAction = true }: TaskFormProps) {
+export function TaskForm({
+    task,
+    projects,
+    activeProjectId,
+    onSave,
+    onClear,
+    showCreateAction = true,
+    readOnly = false,
+}: TaskFormProps) {
     const [formState, setFormState] = useState<TaskPayload>(createEmptyTask(activeProjectId));
     const [teamMembers, setTeamMembers] = useState<TeamMemberRecord[]>([]);
 
@@ -130,9 +139,9 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                 <div className="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <p className="text-uppercase small text-body-secondary mb-1">Tasks</p>
-                        <h2 className="h5 mb-0">{task ? 'Edit Task' : 'Create Task'}</h2>
+                        <h2 className="h5 mb-0">{task ? (readOnly ? 'View Task' : 'Edit Task') : 'Create Task'}</h2>
                     </div>
-                    {task && showCreateAction ? (
+                    {task && showCreateAction && !readOnly ? (
                         <Button variant="outline-secondary" size="sm" onClick={onClear}>
                             New task
                         </Button>
@@ -164,6 +173,8 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                     value={formState.TaskName}
                                     onChange={(event) => setFormState({ ...formState, TaskName: event.target.value })}
                                     required
+                                    readOnly={readOnly}
+                                    disabled={readOnly}
                                 />
                             </Form.Group>
                         </Col>
@@ -180,6 +191,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                         );
                                         setFormState({ ...formState, ResourceNames: nextAssignees.join(', ') });
                                     }}
+                                    disabled={readOnly}
                                 >
                                     {assigneeOptions.map((displayName) => (
                                         <option key={displayName} value={displayName}>
@@ -209,6 +221,8 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                     type="date"
                                     value={formState.Start}
                                     onChange={(event) => setFormState({ ...formState, Start: event.target.value })}
+                                    readOnly={readOnly}
+                                    disabled={readOnly}
                                 />
                             </Form.Group>
                         </Col>
@@ -219,6 +233,8 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                     type="date"
                                     value={formState.Finish}
                                     onChange={(event) => setFormState({ ...formState, Finish: event.target.value })}
+                                    readOnly={readOnly}
+                                    disabled={readOnly}
                                 />
                             </Form.Group>
                         </Col>
@@ -241,6 +257,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                 <Form.Select
                                     value={formState.Status}
                                     onChange={(event) => setFormState({ ...formState, Status: event.target.value })}
+                                    disabled={readOnly}
                                 >
                                     <option>Not Started</option>
                                     <option>On Track</option>
@@ -262,6 +279,8 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                     onChange={(event) =>
                                         setFormState({ ...formState, PercentComplete: Number(event.target.value) })
                                     }
+                                    readOnly={readOnly}
+                                    disabled={readOnly}
                                 />
                             </Form.Group>
                         </Col>
@@ -271,6 +290,7 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                 label="Milestone"
                                 checked={formState.IsMilestone}
                                 onChange={(event) => setFormState({ ...formState, IsMilestone: event.target.checked })}
+                                disabled={readOnly}
                             />
                         </Col>
                         <Col md={12}>
@@ -281,16 +301,26 @@ export function TaskForm({ task, projects, activeProjectId, onSave, onClear, sho
                                     rows={3}
                                     value={formState.Notes}
                                     onChange={(event) => setFormState({ ...formState, Notes: event.target.value })}
+                                    readOnly={readOnly}
+                                    disabled={readOnly}
                                 />
                             </Form.Group>
                         </Col>
                     </Row>
-                    <div className="d-flex gap-2 mt-4">
-                        <Button type="submit">{task ? 'Update Task' : 'Create Task'}</Button>
-                        <Button type="button" variant="outline-secondary" onClick={handleReset}>
-                            Reset
-                        </Button>
-                    </div>
+                    {readOnly ? (
+                        <div className="d-flex gap-2 mt-4">
+                            <Button type="button" variant="outline-secondary" onClick={onClear}>
+                                Back to Tasks
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="d-flex gap-2 mt-4">
+                            <Button type="submit">{task ? 'Update Task' : 'Create Task'}</Button>
+                            <Button type="button" variant="outline-secondary" onClick={handleReset}>
+                                Reset
+                            </Button>
+                        </div>
+                    )}
                 </Form>
             </Card.Body>
         </Card>

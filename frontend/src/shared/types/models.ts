@@ -1,12 +1,15 @@
 export type ThemeMode = 'light' | 'dark';
 export type SortDirection = 'asc' | 'desc';
 
-export interface UserSettings {
-    userId: string;
-    currentUserName: string;
+export interface UserPreferences {
     theme: ThemeMode;
     dashboardSortField: keyof ProjectRecord;
     dashboardSortDirection: SortDirection;
+}
+
+export interface UserSettings extends UserPreferences {
+    userId: string;
+    currentUserName: string;
 }
 
 export interface TeamMemberRecord {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../../shared/api/http';
 import { DEFAULT_USER_NAME } from '../../../shared/config/app';
-import { ProjectPayload, ProjectRecord, TaskPayload, TaskRecord, UserSettings } from '../../../shared/types/models';
+import { ProjectPayload, ProjectRecord, TaskPayload, TaskRecord, UserPreferences } from '../../../shared/types/models';
 
 function sortTasksByUid(tasks: TaskRecord[]): TaskRecord[] {
     return [...tasks].sort((left, right) => left.TaskUID - right.TaskUID);
@@ -87,7 +87,7 @@ function removeTask(projects: ProjectRecord[], taskId: number): ProjectRecord[] 
     });
 }
 
-export function useProjectData(settings: UserSettings | null) {
+export function useProjectData(preferences: UserPreferences | null, currentUserName = DEFAULT_USER_NAME) {
     const [projects, setProjects] = useState<ProjectRecord[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
     const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
@@ -115,8 +115,8 @@ export function useProjectData(settings: UserSettings | null) {
     }, []);
 
     const sortedProjects = useMemo(() => {
-        const field = settings?.dashboardSortField ?? 'Finish';
-        const direction = settings?.dashboardSortDirection ?? 'asc';
+        const field = preferences?.dashboardSortField ?? 'Finish';
+        const direction = preferences?.dashboardSortDirection ?? 'asc';
         return [...projects].sort((left, right) => {
             const leftValue = left[field];
             const rightValue = right[field];
@@ -129,7 +129,7 @@ export function useProjectData(settings: UserSettings | null) {
                 ? String(leftValue).localeCompare(String(rightValue))
                 : String(rightValue).localeCompare(String(leftValue));
         });
-    }, [projects, settings?.dashboardSortDirection, settings?.dashboardSortField]);
+    }, [preferences?.dashboardSortDirection, preferences?.dashboardSortField, projects]);
 
     async function handleProjectSave(payload: ProjectPayload, projectId?: number) {
         setIsSaving(true);
@@ -157,9 +157,8 @@ export function useProjectData(settings: UserSettings | null) {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const importUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
             const importedProject = await apiFetch<ProjectRecord>(
-                `/projects/import?user_name=${encodeURIComponent(importUserName)}`,
+                `/projects/import?user_name=${encodeURIComponent(currentUserName)}`,
                 {
                     method: 'POST',
                     body: formData,

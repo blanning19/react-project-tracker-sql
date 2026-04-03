@@ -5,6 +5,7 @@ dist/
 frontend/dist/
 .vite/
 frontend/.vite/
+frontend/.env
 *.tsbuildinfo
 logs/
 *.log
@@ -22,6 +23,7 @@ backend/**/*.pyc
 backend/.pytest_cache/
 backend/*.egg-info/
 backend/.env
+exports/
 
 # Editor and OS files
 .vscode/*

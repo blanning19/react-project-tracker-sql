@@ -1,17 +1,19 @@
 import { Alert, Button, Col, Container, Row, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
+import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { ProjectForm } from './ProjectForm';
 import { useProjectCreate } from '../hooks/useProjectCreate';
 
 export function ProjectCreatePage() {
     const navigate = useNavigate();
-    const { settings, isLoading: isSettingsLoading } = useThemeSettings();
+    const { isLoading: isSettingsLoading } = useThemeSettings();
+    const { currentUserName, isLoading: isCurrentUserLoading } = useCurrentUser();
     // This page only creates or imports a single project, so it uses a focused
     // mutation hook instead of loading the entire workspace project list first.
-    const { isSaving, error, handleProjectImport, handleProjectSave } = useProjectCreate(settings);
+    const { isSaving, error, handleProjectImport, handleProjectSave } = useProjectCreate(currentUserName);
 
-    if (isSettingsLoading) {
+    if (isSettingsLoading || isCurrentUserLoading) {
         return (
             <div className="min-vh-100 d-flex align-items-center justify-content-center">
                 <Spinner animation="border" role="status" />

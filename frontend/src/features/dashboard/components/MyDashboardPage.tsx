@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { Alert, Badge, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
+import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
@@ -18,10 +18,10 @@ interface MyTaskRow {
 }
 
 export function MyDashboardPage() {
-    const { settings, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
-    const { projects, isLoading, error } = useProjectData(settings);
+    const { preferences, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
+    const { currentUserName, isLoading: isCurrentUserLoading } = useCurrentUser();
+    const { projects, isLoading, error } = useProjectData(preferences);
 
-    const currentUserName = settings?.currentUserName ?? DEFAULT_USER_NAME;
     const normalizedUserName = currentUserName.toLowerCase();
 
     const myProjects = useMemo(
@@ -54,7 +54,7 @@ export function MyDashboardPage() {
         [currentUserName, myProjects, normalizedUserName],
     );
 
-    if (isLoading || isSettingsLoading) {
+    if (isLoading || isSettingsLoading || isCurrentUserLoading) {
         return (
             <div className="min-vh-100 d-flex align-items-center justify-content-center">
                 <Spinner animation="border" role="status" />
@@ -101,11 +101,11 @@ export function MyDashboardPage() {
                             <Form.Group>
                                 <Form.Label className="small text-body-secondary mb-1">Sort field</Form.Label>
                                 <Form.Select
-                                    value={settings?.dashboardSortField ?? 'Finish'}
+                                    value={preferences?.dashboardSortField ?? 'Finish'}
                                     onChange={(event) =>
                                         void setDashboardSort(
                                             event.target.value as keyof ProjectRecord,
-                                            settings?.dashboardSortDirection ?? 'asc',
+                                            preferences?.dashboardSortDirection ?? 'asc',
                                         )
                                     }
                                 >
@@ -119,10 +119,10 @@ export function MyDashboardPage() {
                             <Form.Group>
                                 <Form.Label className="small text-body-secondary mb-1">Direction</Form.Label>
                                 <Form.Select
-                                    value={settings?.dashboardSortDirection ?? 'asc'}
+                                    value={preferences?.dashboardSortDirection ?? 'asc'}
                                     onChange={(event) =>
                                         void setDashboardSort(
-                                            settings?.dashboardSortField ?? 'Finish',
+                                            preferences?.dashboardSortField ?? 'Finish',
                                             event.target.value as 'asc' | 'desc',
                                         )
                                     }
@@ -158,9 +158,10 @@ export function MyDashboardPage() {
                                         </td>
                                         <td>{project.ProjectManager}</td>
                                         <td>
-                                            <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>
-                                                {project.Status}
-                                            </Badge>
+                                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                <Badge bg={getStatusClass(project.Status)}>{project.Status}</Badge>
+                                                {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                            </div>
                                         </td>
                                         <td>{formatDate(project.Finish)}</td>
                                         <td>{project.Priority}</td>
@@ -230,9 +231,10 @@ export function MyDashboardPage() {
                                         </td>
                                         <td>{project.ProjectName}</td>
                                         <td>
-                                            <Badge bg={getStatusClass(task.Status, task.IsOverdue)}>
-                                                {task.Status}
-                                            </Badge>
+                                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                <Badge bg={getStatusClass(task.Status)}>{task.Status}</Badge>
+                                                {task.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                            </div>
                                         </td>
                                         <td>{formatDate(task.Finish)}</td>
                                         <td>{task.PercentComplete}%</td>

@@ -14,7 +14,7 @@ import { OpenProjectsTicker } from './OpenProjectsTicker';
 const sortFieldOptions: Array<keyof ProjectRecord> = ['ProjectName', 'Finish', 'Status', 'PercentComplete', 'Priority'];
 
 export function DashboardPage() {
-    const { settings, setTheme, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
+    const { preferences, setTheme, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
     const [projects, setProjects] = useState<ProjectRecord[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>();
     const [editingTask, setEditingTask] = useState<TaskRecord | null>(null);
@@ -42,8 +42,8 @@ export function DashboardPage() {
     }, []);
 
     const sortedProjects = useMemo(() => {
-        const field = settings?.dashboardSortField ?? 'Finish';
-        const direction = settings?.dashboardSortDirection ?? 'asc';
+        const field = preferences?.dashboardSortField ?? 'Finish';
+        const direction = preferences?.dashboardSortDirection ?? 'asc';
         const next = [...projects].sort((left, right) => {
             const leftValue = left[field];
             const rightValue = right[field];
@@ -58,7 +58,7 @@ export function DashboardPage() {
         });
 
         return next;
-    }, [projects, settings?.dashboardSortDirection, settings?.dashboardSortField]);
+    }, [preferences?.dashboardSortDirection, preferences?.dashboardSortField, projects]);
 
     async function handleProjectSave(payload: ProjectPayload, projectId?: number) {
         setIsSaving(true);
@@ -164,10 +164,10 @@ export function DashboardPage() {
                                     <div className="d-flex flex-column gap-2 align-items-lg-end">
                                         <LiveClock />
                                         <Button
-                                            variant={settings?.theme === 'dark' ? 'light' : 'dark'}
-                                            onClick={() => void setTheme(settings?.theme === 'dark' ? 'light' : 'dark')}
+                                        variant={preferences?.theme === 'dark' ? 'light' : 'dark'}
+                                            onClick={() => void setTheme(preferences?.theme === 'dark' ? 'light' : 'dark')}
                                         >
-                                            Switch to {settings?.theme === 'dark' ? 'light' : 'dark'} theme
+                                            Switch to {preferences?.theme === 'dark' ? 'light' : 'dark'} theme
                                         </Button>
                                     </div>
                                 </div>
@@ -217,11 +217,11 @@ export function DashboardPage() {
                                 <Form.Group>
                                     <Form.Label className="small text-body-secondary mb-1">Sort field</Form.Label>
                                     <Form.Select
-                                        value={settings?.dashboardSortField ?? 'Finish'}
+                                        value={preferences?.dashboardSortField ?? 'Finish'}
                                         onChange={(event) =>
                                             void setDashboardSort(
                                                 event.target.value as keyof ProjectRecord,
-                                                settings?.dashboardSortDirection ?? 'asc',
+                                                preferences?.dashboardSortDirection ?? 'asc',
                                             )
                                         }
                                     >
@@ -235,10 +235,10 @@ export function DashboardPage() {
                                 <Form.Group>
                                     <Form.Label className="small text-body-secondary mb-1">Direction</Form.Label>
                                     <Form.Select
-                                        value={settings?.dashboardSortDirection ?? 'asc'}
+                                        value={preferences?.dashboardSortDirection ?? 'asc'}
                                         onChange={(event) =>
                                             void setDashboardSort(
-                                                settings?.dashboardSortField ?? 'Finish',
+                                                preferences?.dashboardSortField ?? 'Finish',
                                                 event.target.value as 'asc' | 'desc',
                                             )
                                         }
@@ -262,7 +262,7 @@ export function DashboardPage() {
                                     <div className="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
                                         <div>
                                             <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
-                                                <Badge bg={getStatusClass(project.Status, project.IsOverdue)}>
+                                                <Badge bg={getStatusClass(project.Status)}>
                                                     {project.Status}
                                                 </Badge>
                                                 {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
@@ -377,9 +377,14 @@ export function DashboardPage() {
                                                             ) : null}
                                                         </td>
                                                         <td>
-                                                            <Badge bg={getStatusClass(task.Status, task.IsOverdue)}>
-                                                                {task.Status}
-                                                            </Badge>
+                                                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                                                <Badge bg={getStatusClass(task.Status)}>
+                                                                    {task.Status}
+                                                                </Badge>
+                                                                {task.IsOverdue ? (
+                                                                    <Badge bg="danger">Overdue</Badge>
+                                                                ) : null}
+                                                            </div>
                                                         </td>
                                                         <td>{formatDate(task.Finish)}</td>
                                                         <td>{task.PercentComplete}%</td>

@@ -1,10 +1,11 @@
 import { Card, Form } from 'react-bootstrap';
-import { DEFAULT_USER_NAME } from '../../../shared/config/app';
+import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { useThemeSettings } from '../theme/ThemeProvider';
 
 export function SettingsPanel() {
-    const { settings, setTheme } = useThemeSettings();
-    const isDarkMode = settings?.theme === 'dark';
+    const { preferences, setTheme } = useThemeSettings();
+    const { currentUserName } = useCurrentUser();
+    const isDarkMode = preferences?.theme === 'dark';
 
     return (
         <Card className="shadow-sm border-0 h-100 dashboard-panel">
@@ -20,10 +21,11 @@ export function SettingsPanel() {
                 <div className="settings-stack">
                     <div>
                         <p className="mb-1">
-                            <strong>Current User:</strong> {settings?.currentUserName ?? DEFAULT_USER_NAME}
+                            <strong>Current User:</strong> {currentUserName}
                         </p>
                         <p className="mb-0 text-body-secondary small">
-                            Theme and sorting preferences are stored against this account profile.
+                            Identity now comes from the dedicated current-user context, while theme and sorting stay
+                            in saved preferences.
                         </p>
                     </div>
 
@@ -45,10 +47,10 @@ export function SettingsPanel() {
 
                     <div>
                         <p className="mb-2">
-                            <strong>Dashboard Sort:</strong> {settings?.dashboardSortField ?? 'Finish'}
+                            <strong>Dashboard Sort:</strong> {preferences?.dashboardSortField ?? 'Finish'}
                         </p>
                         <p className="mb-0">
-                            <strong>Direction:</strong> {settings?.dashboardSortDirection ?? 'asc'}
+                            <strong>Direction:</strong> {preferences?.dashboardSortDirection ?? 'asc'}
                         </p>
                     </div>
                 </div>

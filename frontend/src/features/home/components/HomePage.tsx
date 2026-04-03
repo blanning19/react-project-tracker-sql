@@ -10,8 +10,8 @@ import { SortDirection } from '../../../shared/types/models';
 const PROJECTS_PER_PAGE = 10;
 
 export function HomePage() {
-    const { settings, isLoading: isSettingsLoading } = useThemeSettings();
-    const { projects, isLoading, error } = useProjectData(settings);
+    const { preferences, isLoading: isSettingsLoading } = useThemeSettings();
+    const { projects, isLoading, error } = useProjectData(preferences);
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState<HomeProjectSortField>('Finish');
     const [sortDirection, setSortDirection] = useState<SortDirection>('asc');

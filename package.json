@@ -17,6 +17,7 @@
     "backend:dev": ".\\backend\\.venv\\Scripts\\python.exe -m uvicorn backend.project_tracker_api.main:app --reload --app-dir .",
     "backend:start": ".\\backend\\.venv\\Scripts\\python.exe -m uvicorn backend.project_tracker_api.main:app --app-dir .",
     "backend:seed": ".\\backend\\.venv\\Scripts\\python.exe -m backend.project_tracker_api.seed",
+    "backend:export:foundry": ".\\backend\\.venv\\Scripts\\python.exe backend\\scripts\\export_foundry_csv.py",
     "backend:lint": ".\\backend\\.venv\\Scripts\\python.exe -m ruff check backend",
     "backend:format:check": ".\\backend\\.venv\\Scripts\\python.exe -m ruff format --check backend",
     "backend:format": ".\\backend\\.venv\\Scripts\\python.exe -m ruff format backend",

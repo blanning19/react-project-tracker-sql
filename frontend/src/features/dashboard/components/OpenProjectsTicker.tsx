@@ -16,10 +16,11 @@ export function OpenProjectsTicker({ projects }: OpenProjectsTickerProps) {
                     {openProjects.map((project) => (
                         <div
                             key={project.ProjectUID}
-                            className={`ticker-pill text-bg-${getStatusClass(project.Status, project.IsOverdue)}`}
+                            className={`ticker-pill text-bg-${getStatusClass(project.Status)}`}
                         >
                             <span className="fw-semibold">{project.ProjectName}</span>
                             <span>{project.Status}</span>
+                            {project.IsOverdue ? <span className="ticker-pill-alert">Overdue</span> : null}
                         </div>
                     ))}
                 </div>

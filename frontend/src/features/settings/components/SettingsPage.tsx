@@ -1,12 +1,13 @@
 import { Col, Container, Row, Spinner } from 'react-bootstrap';
-import { DEFAULT_USER_NAME } from '../../../shared/config/app';
+import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { SettingsPanel } from './SettingsPanel';
 import { useThemeSettings } from '../theme/ThemeProvider';
 
 export function SettingsPage() {
-    const { settings, isLoading } = useThemeSettings();
+    const { isLoading } = useThemeSettings();
+    const { currentUserName, isLoading: isCurrentUserLoading } = useCurrentUser();
 
-    if (isLoading) {
+    if (isLoading || isCurrentUserLoading) {
         return (
             <div className="min-vh-100 d-flex align-items-center justify-content-center">
                 <Spinner animation="border" role="status" />
@@ -22,8 +23,7 @@ export function SettingsPage() {
                         <p className="text-uppercase small mb-2 hero-kicker">Settings</p>
                         <h1 className="display-6 fw-semibold mb-2">Manage your workspace preferences.</h1>
                         <p className="mb-0 text-body-secondary">
-                            Theme mode and saved dashboard sort preferences for{' '}
-                            {settings?.currentUserName ?? DEFAULT_USER_NAME} live here now.
+                            Theme mode and saved dashboard sort preferences for {currentUserName} live here now.
                         </p>
                     </div>
                 </Col>
