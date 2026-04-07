@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import date
 
@@ -25,6 +26,38 @@ def calculate_project_percent_complete(tasks: list[models.Task]) -> int:
         return 0
 
     return round(sum(task.PercentComplete for task in tasks) / len(tasks))
+
+
+def serialize_json_list(value: str) -> list[str]:
+    if not value:
+        return []
+    try:
+        parsed_value = json.loads(value)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(parsed_value, list):
+        return []
+    return [str(item).strip() for item in parsed_value if str(item).strip()]
+
+
+def serialize_planner_metadata(value: str) -> schemas.PlannerImportMetadataModel | None:
+    if not value:
+        return None
+    try:
+        return schemas.PlannerImportMetadataModel.model_validate(json.loads(value))
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def build_checklist_progress(task: models.Task) -> schemas.ChecklistProgressModel:
+    total_items = len(serialize_json_list(task.ChecklistItemsJson))
+    completed_items = len(serialize_json_list(task.CompletedChecklistItemsJson))
+    percent_complete = round((completed_items / total_items) * 100) if total_items > 0 else 0
+    return schemas.ChecklistProgressModel(
+        completedItems=completed_items,
+        totalItems=total_items,
+        percentComplete=percent_complete,
+    )
 
 
 def get_tasks_for_project(db: Session, project_uid: int) -> list[models.Task]:
@@ -57,6 +90,11 @@ def serialize_task(task: models.Task) -> schemas.TaskRead:
             "Status": task.Status,
             "IsMilestone": task.IsMilestone,
             "Notes": task.Notes,
+            "BucketName": task.BucketName,
+            "Labels": serialize_json_list(task.LabelsJson),
+            "ChecklistItems": serialize_json_list(task.ChecklistItemsJson),
+            "CompletedChecklistItems": serialize_json_list(task.CompletedChecklistItemsJson),
+            "ChecklistProgress": build_checklist_progress(task),
             "IsOverdue": is_overdue(task.Finish, task.PercentComplete, task.Status),
         }
     )
@@ -81,6 +119,7 @@ def serialize_project(project: models.Project) -> schemas.ProjectRead:
             "Priority": project.Priority,
             "Notes": project.Notes,
             "SourceFileName": project.SourceFileName,
+            "PlannerImportMetadata": serialize_planner_metadata(project.PlannerImportMetadata),
             "IsOverdue": is_overdue(project.Finish, percent_complete, project.Status),
             "tasks": [serialize_task(task) for task in project.tasks],
         }
@@ -159,6 +198,7 @@ def import_project(
         Priority=imported_project.priority,
         Notes=imported_project.notes,
         SourceFileName=imported_project.source_file_name,
+        PlannerImportMetadata="",
     )
     db.add(project)
     db.flush()
@@ -182,6 +222,10 @@ def import_project(
                 Status=imported_task.status,
                 IsMilestone=imported_task.is_milestone,
                 Notes=imported_task.notes,
+                BucketName="",
+                LabelsJson="[]",
+                ChecklistItemsJson="[]",
+                CompletedChecklistItemsJson="[]",
             )
         )
 
@@ -238,6 +282,9 @@ def create_project(db: Session, payload: schemas.ProjectCreate) -> schemas.Proje
     project_data = payload.model_dump(exclude={"ProjectUID"})
     project_data["DurationDays"] = calculate_duration_days(payload.Start, payload.Finish)
     project_data["PercentComplete"] = 0
+    project_data["PlannerImportMetadata"] = (
+        payload.PlannerImportMetadata.model_dump_json() if payload.PlannerImportMetadata else ""
+    )
     project = models.Project(**project_data)
     db.add(project)
     commit_with_rollback(db, "Failed to create project.", project_uid=project.ProjectUID)
@@ -247,7 +294,11 @@ def create_project(db: Session, payload: schemas.ProjectCreate) -> schemas.Proje
 
 
 def update_project(db: Session, project: models.Project, payload: schemas.ProjectUpdate) -> schemas.ProjectRead:
-    for key, value in payload.model_dump().items():
+    payload_data = payload.model_dump()
+    payload_data["PlannerImportMetadata"] = (
+        payload.PlannerImportMetadata.model_dump_json() if payload.PlannerImportMetadata else ""
+    )
+    for key, value in payload_data.items():
         setattr(project, key, value)
     sync_project_metrics(db, project)
     commit_with_rollback(db, "Failed to update project.", project_uid=project.ProjectUID)
@@ -270,6 +321,13 @@ def get_task(db: Session, task_id: int) -> models.Task | None:
 def create_task(db: Session, payload: schemas.TaskCreate) -> schemas.TaskRead:
     task_data = payload.model_dump(exclude={"TaskUID"})
     task_data["DurationDays"] = calculate_duration_days(payload.Start, payload.Finish)
+    task_data["LabelsJson"] = json.dumps(payload.Labels)
+    task_data["ChecklistItemsJson"] = json.dumps(payload.ChecklistItems)
+    task_data["CompletedChecklistItemsJson"] = json.dumps(payload.CompletedChecklistItems)
+    task_data.pop("Labels", None)
+    task_data.pop("ChecklistItems", None)
+    task_data.pop("CompletedChecklistItems", None)
+    task_data.pop("ChecklistProgress", None)
     task = models.Task(**task_data)
     db.add(task)
     db.flush()
@@ -284,7 +342,15 @@ def create_task(db: Session, payload: schemas.TaskCreate) -> schemas.TaskRead:
 
 def update_task(db: Session, task: models.Task, payload: schemas.TaskUpdate) -> schemas.TaskRead:
     previous_project_uid = task.ProjectUID
-    for key, value in payload.model_dump().items():
+    payload_data = payload.model_dump()
+    payload_data["LabelsJson"] = json.dumps(payload.Labels)
+    payload_data["ChecklistItemsJson"] = json.dumps(payload.ChecklistItems)
+    payload_data["CompletedChecklistItemsJson"] = json.dumps(payload.CompletedChecklistItems)
+    payload_data.pop("Labels", None)
+    payload_data.pop("ChecklistItems", None)
+    payload_data.pop("CompletedChecklistItems", None)
+    payload_data.pop("ChecklistProgress", None)
+    for key, value in payload_data.items():
         setattr(task, key, value)
     task.DurationDays = calculate_duration_days(task.Start, task.Finish)
     db.flush()
@@ -319,6 +385,98 @@ def delete_task(db: Session, task: models.Task) -> None:
         sync_project_metrics(db, project)
     commit_with_rollback(db, "Failed to delete task.", task_uid=task_uid, project_uid=project_uid)
     logger.info("Deleted task.", extra={"taskUID": task_uid, "projectUID": project_uid})
+
+
+def import_planner_project(
+    db: Session, payload: schemas.PlannerImportRequest, *, correlation_id: str | None = None
+) -> schemas.ProjectRead:
+    ensure_manager_exists(db, payload.ProjectManager)
+
+    team_member_names = sorted(
+        {
+            resource_name.strip()
+            for task in payload.tasks
+            for resource_name in task.ResourceNames.split(",")
+            if resource_name.strip()
+        }
+    )
+    if team_member_names:
+        ensure_team_members_exist(db, team_member_names)
+
+    project = models.Project(
+        ProjectName=payload.ProjectName,
+        ProjectManager=payload.ProjectManager,
+        CreatedDate=date.today(),
+        CalendarName="Planner",
+        Start=payload.Start,
+        Finish=payload.Finish,
+        DurationDays=calculate_duration_days(payload.Start, payload.Finish),
+        PercentComplete=0,
+        Status=payload.Status,
+        Priority=payload.Priority,
+        Notes=payload.Notes,
+        SourceFileName=payload.SourceFileName,
+        PlannerImportMetadata=payload.PlannerImportMetadata.model_dump_json(),
+    )
+    db.add(project)
+    db.flush()
+
+    for task in payload.tasks:
+        db.add(
+            models.Task(
+                ProjectUID=project.ProjectUID,
+                TaskName=task.TaskName,
+                OutlineLevel=1,
+                OutlineNumber="",
+                WBS="",
+                IsSummary=False,
+                Predecessors="",
+                ResourceNames=task.ResourceNames,
+                Start=task.Start,
+                Finish=task.Finish,
+                DurationDays=calculate_duration_days(task.Start, task.Finish),
+                PercentComplete=task.PercentComplete,
+                Status=task.Status,
+                IsMilestone=False,
+                Notes=task.Notes,
+                BucketName=task.BucketName,
+                LabelsJson=json.dumps(task.Labels),
+                ChecklistItemsJson=json.dumps(task.ChecklistItems),
+                CompletedChecklistItemsJson=json.dumps(task.CompletedChecklistItems),
+            )
+        )
+
+    sync_project_metrics(db, project)
+    commit_with_rollback(
+        db,
+        "Failed to import Microsoft Planner workbook.",
+        source_file_name=payload.SourceFileName,
+    )
+    db.refresh(project)
+    serialized_project = serialize_project(get_project(db, project.ProjectUID))
+    try:
+        admin_service.record_import_event(
+            db,
+            correlation_id=correlation_id or "",
+            source_file_name=payload.SourceFileName,
+            imported_by=payload.ImportedBy,
+            status="Succeeded",
+            project_uid=serialized_project.ProjectUID,
+            project_name=serialized_project.ProjectName,
+            task_count=len(serialized_project.tasks),
+            message="Planner workbook imported successfully.",
+        )
+    except Exception:
+        logger.exception(
+            "Planner import succeeded but recording the import event failed.",
+            extra={
+                "correlationId": correlation_id or "",
+                "projectUID": serialized_project.ProjectUID,
+                "sourceFileName": payload.SourceFileName,
+                "importedBy": payload.ImportedBy,
+            },
+        )
+    return serialized_project
 
 
 def get_or_create_settings(db: Session, user_id: str) -> models.UserSetting:

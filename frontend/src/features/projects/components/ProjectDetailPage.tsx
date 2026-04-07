@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Button, Card, Col, Container, Nav, Row, Spinner } from 'react-bootstrap';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
+import {
+    buildPermissionContext,
+    canEditProject,
+    canEditTask,
+    canViewTask,
+} from '../../../shared/permissions/workspacePermissions';
+import { getProjectTypeLabel, isPlannerProject, projectHasBoardBuckets } from '../../../shared/utils/projectType';
 import { getStatusClass } from '../../../shared/utils/status';
 import { useProjectData } from '../../dashboard/hooks/useProjectData';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { TaskForm } from '../../tasks/components/TaskForm';
+import { ProjectBoardView } from './ProjectBoardView';
 import { ProjectOverviewTab } from './ProjectOverviewTab';
 import { ProjectTasksTab } from './ProjectTasksTab';
 import { ProjectTimelineTab } from './ProjectTimelineTab';
@@ -21,7 +28,7 @@ export function ProjectDetailPage() {
     const selectedTaskId = Number(searchParams.get('taskId'));
     const origin = searchParams.get('from');
     const { preferences, isLoading: isSettingsLoading } = useThemeSettings();
-    const { currentUserName, isLoading: isCurrentUserLoading } = useCurrentUser();
+    const { currentUserName, userAccess, isLoading: isCurrentUserLoading } = useCurrentUser();
     const {
         projects,
         setSelectedProjectId,
@@ -35,7 +42,6 @@ export function ProjectDetailPage() {
         handleProjectSave,
         handleTaskSave,
         handleDeleteProject,
-        handleDeleteTask,
     } = useProjectData(preferences);
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -44,17 +50,20 @@ export function ProjectDetailPage() {
         [parsedProjectId, projects],
     );
     const projectForForm = editingProject ?? project ?? null;
-    const isOwner = project?.ProjectManager.toLowerCase() === currentUserName.toLowerCase();
+    const permissionContext = useMemo(
+        () => buildPermissionContext(currentUserName, userAccess),
+        [currentUserName, userAccess],
+    );
+    const projectCanEdit = project ? canEditProject(project, permissionContext) : false;
     const visibleTasks = useMemo(() => project?.tasks ?? [], [project]);
+    const showBoardTab = project ? isPlannerProject(project) && projectHasBoardBuckets(project) : false;
     // Shared timeline/task helpers were extracted so the detail page can focus on
     // navigation, permissions, and deep-link restoration instead of rendering internals.
     const taskLookup = useMemo(() => buildTaskLookup(visibleTasks), [visibleTasks]);
     // Task edit access mirrors the dashboard rules: project owners can edit every
     // task, while assignees can edit only tasks explicitly assigned to them.
-    const canEditSelectedTask = editingTask
-        ? isOwner || isTaskAssignedToUser(editingTask.ResourceNames, currentUserName)
-        : false;
-    const canViewSelectedTask = Boolean(editingTask);
+    const canEditSelectedTask = editingTask && project ? canEditTask(editingTask, project, permissionContext) : false;
+    const canViewSelectedTask = editingTask && project ? canViewTask(editingTask, project, permissionContext) : false;
     const isTaskOpen = Boolean(editingTask);
     const backPath = origin === 'home' ? '/' : '/my-dashboard';
     const backLabel = origin === 'home' ? 'Back to Home' : 'Back to My Dashboard';
@@ -80,7 +89,7 @@ export function ProjectDetailPage() {
         }
 
         if (activeTab === 'overview') {
-            return isOwner
+            return projectCanEdit
                 ? {
                       label: 'Edit Enabled',
                       badge: 'success' as const,
@@ -104,7 +113,7 @@ export function ProjectDetailPage() {
                     ? 'Use this table to inspect work, assignments, and dependencies before opening a specific task for editing.'
                     : 'The timeline stays presentation-focused so schedule review is separate from editing.',
         };
-    }, [activeTab, canEditSelectedTask, isOwner]);
+    }, [activeTab, canEditSelectedTask, projectCanEdit]);
 
     async function handleProjectDelete() {
         await handleDeleteProject(parsedProjectId);
@@ -123,7 +132,7 @@ export function ProjectDetailPage() {
             return;
         }
 
-        const canEditMatchedTask = isOwner || isTaskAssignedToUser(matchedTask.ResourceNames, currentUserName);
+        const canEditMatchedTask = canEditTask(matchedTask, project, permissionContext);
         if (!canEditMatchedTask || editingTask?.TaskUID === matchedTask.TaskUID) {
             return;
         }
@@ -131,7 +140,7 @@ export function ProjectDetailPage() {
         setSelectedProjectId(project.ProjectUID);
         setEditingTask(matchedTask);
         setActiveTab('edit-task');
-    }, [currentUserName, editingTask?.TaskUID, isOwner, project, selectedTaskId, setEditingTask, setSelectedProjectId]);
+    }, [editingTask?.TaskUID, permissionContext, project, selectedTaskId, setEditingTask, setSelectedProjectId]);
 
     useEffect(() => {
         if (!editingTask && activeTab === 'edit-task') {
@@ -173,6 +182,7 @@ export function ProjectDetailPage() {
                                 </p>
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     <Badge bg={modeSummary.badge}>{modeSummary.label}</Badge>
+                                    <Badge bg={showBoardTab ? 'primary' : 'secondary'}>{project ? getProjectTypeLabel(project) : 'Manual'}</Badge>
                                     <Badge bg={getStatusClass(project.Status)}>
                                         {project.Status}
                                     </Badge>
@@ -237,10 +247,15 @@ export function ProjectDetailPage() {
                         <Nav.Item>
                             <Nav.Link eventKey="timeline">Timeline</Nav.Link>
                         </Nav.Item>
+                        {showBoardTab ? (
+                            <Nav.Item>
+                                <Nav.Link eventKey="board">Board</Nav.Link>
+                            </Nav.Item>
+                        ) : null}
                         <Nav.Item>
                             <Nav.Link eventKey="tasks">Tasks</Nav.Link>
                         </Nav.Item>
-                        {isTaskOpen ? (
+                        {isTaskOpen && canEditSelectedTask ? (
                             <Nav.Item>
                                 <Nav.Link eventKey="edit-task">Edit Task</Nav.Link>
                             </Nav.Item>
@@ -251,7 +266,7 @@ export function ProjectDetailPage() {
 
             {activeTab === 'overview' ? (
                 <ProjectOverviewTab
-                    isOwner={isOwner}
+                    isOwner={projectCanEdit}
                     isSaving={isSaving}
                     modeLabel={modeSummary.label}
                     onDeleteProject={handleProjectDelete}
@@ -263,6 +278,18 @@ export function ProjectDetailPage() {
             ) : null}
 
             {activeTab === 'timeline' ? <ProjectTimelineTab project={project} /> : null}
+
+            {activeTab === 'board' && showBoardTab ? (
+                <ProjectBoardView
+                    project={project}
+                    onOpenTask={(task) => {
+                        setSelectedProjectId(project.ProjectUID);
+                        setEditingTask(task);
+                        setActiveTab('edit-task');
+                    }}
+                    onTaskSave={handleTaskSave}
+                />
+            ) : null}
 
             {activeTab === 'edit-task' && canViewSelectedTask ? (
                 <Row className="g-4">
@@ -285,18 +312,12 @@ export function ProjectDetailPage() {
 
             {activeTab === 'tasks' ? (
                 <ProjectTasksTab
-                    currentUserName={currentUserName}
-                    isOwner={isOwner}
-                    isSaving={isSaving}
+                    permissionContext={permissionContext}
+                    project={project}
+                    projectCanEdit={projectCanEdit}
                     isTaskOpen={isTaskOpen}
                     modeLabel={modeSummary.label}
-                    onDeleteTask={handleDeleteTask}
-                    onEditTask={(task) => {
-                        setSelectedProjectId(project.ProjectUID);
-                        setEditingTask(task);
-                        setActiveTab('edit-task');
-                    }}
-                    onViewTask={(task) => {
+                    onOpenTask={(task) => {
                         setSelectedProjectId(project.ProjectUID);
                         setEditingTask(task);
                         setActiveTab('edit-task');

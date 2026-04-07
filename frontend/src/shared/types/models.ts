@@ -86,6 +86,19 @@ export interface EnvironmentSummaryRecord {
     healthUrl: string;
 }
 
+export interface ChecklistProgressRecord {
+    completedItems: number;
+    totalItems: number;
+    percentComplete: number;
+}
+
+export interface PlannerImportMetadataRecord {
+    source: string;
+    importedAt: string | null;
+    bucketCount: number;
+    labelNames: string[];
+}
+
 export interface TaskRecord {
     TaskUID: number;
     ProjectUID: number;
@@ -104,6 +117,11 @@ export interface TaskRecord {
     IsMilestone: boolean;
     IsOverdue: boolean;
     Notes: string;
+    BucketName: string;
+    Labels: string[];
+    ChecklistItems: string[];
+    CompletedChecklistItems: string[];
+    ChecklistProgress: ChecklistProgressRecord;
 }
 
 export interface ProjectRecord {
@@ -121,6 +139,7 @@ export interface ProjectRecord {
     IsOverdue: boolean;
     Notes: string;
     SourceFileName: string;
+    PlannerImportMetadata: PlannerImportMetadataRecord | null;
     tasks: TaskRecord[];
 }
 

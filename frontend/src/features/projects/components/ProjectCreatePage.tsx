@@ -31,13 +31,17 @@ export function ProjectCreatePage() {
                                 <p className="text-uppercase small mb-2 hero-kicker">Create Project</p>
                                 <h1 className="display-6 fw-semibold mb-2">Start a project manually or import one.</h1>
                                 <p className="mb-0 text-body-secondary">
-                                    Use the form for manual entry or upload a Microsoft Project XML export to create the
-                                    project and tasks in one step.
+                                    Use the form for manual entry, import Microsoft Project XML here, or jump to the dedicated Planner workbook import flow.
                                 </p>
                             </div>
-                            <Button variant="outline-secondary" onClick={() => navigate('/my-dashboard')}>
-                                Back to My Dashboard
-                            </Button>
+                            <div className="d-flex gap-2 flex-wrap">
+                                <Button variant="outline-primary" onClick={() => navigate('/import-planner')}>
+                                    Import Planner Workbook
+                                </Button>
+                                <Button variant="outline-secondary" onClick={() => navigate('/my-dashboard')}>
+                                    Back to My Dashboard
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </Col>

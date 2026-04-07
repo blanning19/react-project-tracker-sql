@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
+import { buildPermissionContext, canViewAdmin } from '../../../shared/permissions/workspacePermissions';
 
 export function AppLayout() {
     const { preferences } = useThemeSettings();
     const { currentUserName, userAccess } = useCurrentUser();
+    const permissionContext = buildPermissionContext(currentUserName, userAccess);
 
     return (
         <div className="app-shell app-shell-grid">
@@ -26,12 +28,18 @@ export function AppLayout() {
                             My Work
                         </NavLink>
                         <NavLink
+                            to="/import-planner"
+                            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                        >
+                            Import Planner
+                        </NavLink>
+                        <NavLink
                             to="/settings"
                             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                         >
                             Settings
                         </NavLink>
-                        {userAccess?.canViewAdmin ? (
+                        {canViewAdmin(permissionContext) ? (
                             <NavLink
                                 to="/admin"
                                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}

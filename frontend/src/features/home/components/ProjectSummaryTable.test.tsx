@@ -19,6 +19,7 @@ const sampleProject: ProjectRecord = {
     IsOverdue: false,
     Notes: '',
     SourceFileName: 'manual',
+    PlannerImportMetadata: null,
     tasks: [
         {
             TaskUID: 5001,
@@ -38,6 +39,15 @@ const sampleProject: ProjectRecord = {
             IsMilestone: false,
             IsOverdue: false,
             Notes: '',
+            BucketName: '',
+            Labels: [],
+            ChecklistItems: [],
+            CompletedChecklistItems: [],
+            ChecklistProgress: {
+                completedItems: 0,
+                totalItems: 0,
+                percentComplete: 0,
+            },
         },
     ],
 };

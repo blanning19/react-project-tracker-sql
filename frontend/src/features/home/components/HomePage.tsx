@@ -82,9 +82,14 @@ export function HomePage() {
                             </div>
                             <div className="d-flex flex-column align-items-lg-end gap-3">
                                 <LiveClock />
-                                <Link to="/projects/new" className="btn btn-primary">
-                                    Create or Import Project
-                                </Link>
+                                <div className="d-flex gap-2 flex-wrap justify-content-lg-end">
+                                    <Link to="/import-planner" className="btn btn-outline-primary">
+                                        Import Planner
+                                    </Link>
+                                    <Link to="/projects/new" className="btn btn-primary">
+                                        Create or Import Project
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>

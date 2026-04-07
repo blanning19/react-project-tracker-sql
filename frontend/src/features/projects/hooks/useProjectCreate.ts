@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { apiFetch } from '../../../shared/api/http';
 import { ProjectPayload, ProjectRecord } from '../../../shared/types/models';
+import { ParsedPlannerProject } from '../utils/plannerParser';
 
 interface UseProjectCreateResult {
     error: string | null;
     isSaving: boolean;
     handleProjectImport: (file: File) => Promise<ProjectRecord>;
+    handlePlannerImport: (payload: ParsedPlannerProject) => Promise<ProjectRecord>;
     handleProjectSave: (payload: ProjectPayload) => Promise<ProjectRecord>;
 }
 
@@ -53,5 +55,22 @@ export function useProjectCreate(currentUserName: string): UseProjectCreateResul
         }
     }
 
-    return { error, isSaving, handleProjectImport, handleProjectSave };
+    async function handlePlannerImport(payload: ParsedPlannerProject) {
+        setIsSaving(true);
+        setError(null);
+        try {
+            return await apiFetch<ProjectRecord>('/projects/import-planner', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+        } catch (saveError) {
+            const message = saveError instanceof Error ? saveError.message : 'Unable to import the Planner workbook.';
+            setError(message);
+            throw saveError;
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
+    return { error, isSaving, handleProjectImport, handlePlannerImport, handleProjectSave };
 }

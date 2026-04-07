@@ -33,6 +33,16 @@ def ensure_legacy_schema_columns() -> None:
             connection.execute(text("ALTER TABLE projects ADD COLUMN \"CalendarName\" VARCHAR(150) DEFAULT ''"))
             connection.execute(text('UPDATE projects SET "CalendarName" = \'\' WHERE "CalendarName" IS NULL'))
             connection.execute(text('ALTER TABLE projects ALTER COLUMN "CalendarName" SET NOT NULL'))
+        if "PlannerImportMetadata" not in project_columns:
+            logger.info('Adding missing column projects."PlannerImportMetadata".')
+            connection.execute(text("ALTER TABLE projects ADD COLUMN \"PlannerImportMetadata\" TEXT DEFAULT ''"))
+            connection.execute(
+                text(
+                    'UPDATE projects SET "PlannerImportMetadata" = \'\' '
+                    'WHERE "PlannerImportMetadata" IS NULL'
+                )
+            )
+            connection.execute(text('ALTER TABLE projects ALTER COLUMN "PlannerImportMetadata" SET NOT NULL'))
 
         task_columns = {column["name"] for column in inspector.get_columns("tasks")}
         task_column_statements = {
@@ -41,6 +51,13 @@ def ensure_legacy_schema_columns() -> None:
             "WBS": "ALTER TABLE tasks ADD COLUMN \"WBS\" VARCHAR(50) DEFAULT ''",
             "IsSummary": 'ALTER TABLE tasks ADD COLUMN "IsSummary" BOOLEAN DEFAULT FALSE',
             "Predecessors": "ALTER TABLE tasks ADD COLUMN \"Predecessors\" TEXT DEFAULT ''",
+            "BucketName": "ALTER TABLE tasks ADD COLUMN \"BucketName\" VARCHAR(150) DEFAULT ''",
+            "LabelsJson": "ALTER TABLE tasks ADD COLUMN \"LabelsJson\" TEXT DEFAULT '[]'",
+            "ChecklistItemsJson": "ALTER TABLE tasks ADD COLUMN \"ChecklistItemsJson\" TEXT DEFAULT '[]'",
+            "CompletedChecklistItemsJson": (
+                "ALTER TABLE tasks ADD COLUMN "
+                "\"CompletedChecklistItemsJson\" TEXT DEFAULT '[]'"
+            ),
         }
 
         for column_name, statement in task_column_statements.items():
@@ -49,17 +66,42 @@ def ensure_legacy_schema_columns() -> None:
                 connection.execute(text(statement))
 
         refreshed_task_columns = {column["name"] for column in inspect(connection).get_columns("tasks")}
-        if {"OutlineLevel", "OutlineNumber", "WBS", "IsSummary", "Predecessors"}.issubset(refreshed_task_columns):
+        if {
+            "OutlineLevel",
+            "OutlineNumber",
+            "WBS",
+            "IsSummary",
+            "Predecessors",
+            "BucketName",
+            "LabelsJson",
+            "ChecklistItemsJson",
+            "CompletedChecklistItemsJson",
+        }.issubset(refreshed_task_columns):
             connection.execute(text('UPDATE tasks SET "OutlineLevel" = 1 WHERE "OutlineLevel" IS NULL'))
             connection.execute(text('UPDATE tasks SET "OutlineNumber" = \'\' WHERE "OutlineNumber" IS NULL'))
             connection.execute(text('UPDATE tasks SET "WBS" = \'\' WHERE "WBS" IS NULL'))
             connection.execute(text('UPDATE tasks SET "IsSummary" = FALSE WHERE "IsSummary" IS NULL'))
             connection.execute(text('UPDATE tasks SET "Predecessors" = \'\' WHERE "Predecessors" IS NULL'))
+            connection.execute(text('UPDATE tasks SET "BucketName" = \'\' WHERE "BucketName" IS NULL'))
+            connection.execute(text('UPDATE tasks SET "LabelsJson" = \'[]\' WHERE "LabelsJson" IS NULL'))
+            connection.execute(
+                text('UPDATE tasks SET "ChecklistItemsJson" = \'[]\' WHERE "ChecklistItemsJson" IS NULL')
+            )
+            connection.execute(
+                text(
+                    'UPDATE tasks SET "CompletedChecklistItemsJson" = \'[]\' '
+                    'WHERE "CompletedChecklistItemsJson" IS NULL'
+                )
+            )
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "OutlineLevel" SET NOT NULL'))
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "OutlineNumber" SET NOT NULL'))
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "WBS" SET NOT NULL'))
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "IsSummary" SET NOT NULL'))
             connection.execute(text('ALTER TABLE tasks ALTER COLUMN "Predecessors" SET NOT NULL'))
+            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "BucketName" SET NOT NULL'))
+            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "LabelsJson" SET NOT NULL'))
+            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "ChecklistItemsJson" SET NOT NULL'))
+            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "CompletedChecklistItemsJson" SET NOT NULL'))
 
         table_names = set(inspector.get_table_names())
         if "import_events" in table_names:

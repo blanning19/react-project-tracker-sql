@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Badge, Card, Col, Container, Nav, Row, Spinner } from 'react-bootstrap';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { apiFetch } from '../../../shared/api/http';
+import { buildPermissionContext, canViewAdmin, canViewLogs } from '../../../shared/permissions/workspacePermissions';
 import { EnvironmentSummaryRecord, ImportEventRecord, UserAccessRecord } from '../../../shared/types/models';
 import { AccessTab } from './AccessTab';
 import { AdminTabKey, ImportFilterRange } from './adminTypes';
@@ -12,6 +13,10 @@ import { LogsTab } from './LogsTab';
 
 export function AdminPage() {
     const { currentUserName, userAccess, isLoading } = useCurrentUser();
+    const permissionContext = useMemo(
+        () => buildPermissionContext(currentUserName, userAccess),
+        [currentUserName, userAccess],
+    );
     const [environmentSummary, setEnvironmentSummary] = useState<EnvironmentSummaryRecord | null>(null);
     const [importEvents, setImportEvents] = useState<ImportEventRecord[]>([]);
     const [userAccessList, setUserAccessList] = useState<UserAccessRecord[]>([]);
@@ -30,7 +35,7 @@ export function AdminPage() {
         setLoadError(null);
 
         try {
-            if (!userAccess?.canViewAdmin) {
+            if (!canViewAdmin(permissionContext)) {
                 setEnvironmentSummary(null);
                 setImportEvents([]);
                 setUserAccessList([]);
@@ -51,7 +56,7 @@ export function AdminPage() {
         } finally {
             setIsPageLoading(false);
         }
-    }, [currentUserName, userAccess?.canViewAdmin]);
+    }, [currentUserName, permissionContext]);
 
     useEffect(() => {
         if (isLoading) {
@@ -121,7 +126,7 @@ export function AdminPage() {
         );
     }
 
-    if (!userAccess?.canViewAdmin) {
+    if (!canViewAdmin(permissionContext)) {
         return (
             <Container fluid="xl" className="pt-3 pt-lg-4 pb-4 pb-lg-5">
                 <Row className="g-4 align-items-stretch mb-4">
@@ -148,6 +153,8 @@ export function AdminPage() {
             </Container>
         );
     }
+
+    const currentRoleLabel = formatRoleLabel(userAccess?.role ?? 'Viewer');
 
     return (
         <Container fluid="xl" className="pt-3 pt-lg-4 pb-4 pb-lg-5">
@@ -184,7 +191,7 @@ export function AdminPage() {
                                     <p className="text-uppercase small text-body-secondary mb-1">Admin Context</p>
                                     <h2 className="h5 mb-1">Current workspace access</h2>
                                     <p className="mb-0 small text-body-secondary">
-                                        Signed in as {currentUserName} with role {formatRoleLabel(userAccess.role)}.
+                                        Signed in as {currentUserName} with role {currentRoleLabel}.
                                     </p>
                                 </div>
                                 <div className="small text-body-secondary text-lg-end">
@@ -245,7 +252,7 @@ export function AdminPage() {
 
             {activeTab === 'logs' ? (
                 <LogsTab
-                    canViewLogs={userAccess.canViewLogs}
+                    canViewLogs={canViewLogs(permissionContext)}
                     currentUserName={currentUserName}
                     selectedLogTimestamp={selectedLogTimestamp}
                     selectedLogCorrelationId={selectedLogCorrelationId}

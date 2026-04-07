@@ -1,38 +1,34 @@
 import { Alert, Badge, Button, Card, Table } from 'react-bootstrap';
-import { TaskRecord } from '../../../shared/types/models';
-import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
+import { ProjectRecord, TaskRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
+import { PermissionContext, canEditTask } from '../../../shared/permissions/workspacePermissions';
 import { getStatusClass } from '../../../shared/utils/status';
 import { renderDependencyBadges } from './projectDetailUtils';
 
 interface ProjectTasksTabProps {
-    currentUserName: string;
-    isOwner: boolean;
-    isSaving: boolean;
+    permissionContext: PermissionContext;
+    project: ProjectRecord;
+    projectCanEdit: boolean;
     isTaskOpen: boolean;
     modeLabel: string;
-    onDeleteTask: (taskId: number) => Promise<void>;
-    onEditTask: (task: TaskRecord) => void;
-    onViewTask: (task: TaskRecord) => void;
+    onOpenTask: (task: TaskRecord) => void;
     onNewTask: () => void;
     taskLookup: Map<string, string>;
     visibleTasks: TaskRecord[];
 }
 
 export function ProjectTasksTab({
-    currentUserName,
-    isOwner,
-    isSaving,
+    permissionContext,
+    project,
+    projectCanEdit,
     isTaskOpen,
     modeLabel,
-    onDeleteTask,
-    onEditTask,
-    onViewTask,
+    onOpenTask,
     onNewTask,
     taskLookup,
     visibleTasks,
 }: ProjectTasksTabProps) {
-    if (visibleTasks.length <= 1) {
+    if (visibleTasks.length === 0) {
         return <Alert variant="secondary">No tasks available for this project yet.</Alert>;
     }
 
@@ -43,7 +39,7 @@ export function ProjectTasksTab({
                     <div>
                         <p className="text-uppercase small text-body-secondary mb-1">Tasks</p>
                         <h2 className="h5 mb-0">Project task plan</h2>
-                        {!isOwner ? (
+                        {!projectCanEdit ? (
                             <p className="mb-0 small text-body-secondary">
                                 You can view the full imported project here. Editing still follows ownership and
                                 assignment rules.
@@ -52,7 +48,7 @@ export function ProjectTasksTab({
                     </div>
                     <div className="d-flex gap-2 align-items-center flex-wrap">
                         <Badge bg={isTaskOpen ? 'warning' : 'info'}>{modeLabel}</Badge>
-                        {isOwner && !isTaskOpen ? (
+                        {projectCanEdit && !isTaskOpen ? (
                             <Button variant="outline-success" onClick={onNewTask}>
                                 New Task
                             </Button>
@@ -70,12 +66,12 @@ export function ProjectTasksTab({
                                 <th>Status</th>
                                 <th>Finish</th>
                                 <th>Complete</th>
-                                <th className="text-end">Actions</th>
+                                <th className="text-end" />
                             </tr>
                         </thead>
                         <tbody>
                             {visibleTasks.map((task) => {
-                                const canEditTask = isOwner || isTaskAssignedToUser(task.ResourceNames, currentUserName);
+                                const taskCanEdit = canEditTask(task, project, permissionContext);
 
                                 return (
                                 <tr key={task.TaskUID}>
@@ -112,35 +108,13 @@ export function ProjectTasksTab({
                                     <td>{formatDate(task.Finish)}</td>
                                     <td>{task.PercentComplete}%</td>
                                     <td className="text-end">
-                                        <div className="d-flex gap-2 justify-content-end flex-wrap">
-                                            {canEditTask ? (
-                                                <Button
-                                                    variant="outline-primary"
-                                                    size="sm"
-                                                    onClick={() => onEditTask(task)}
-                                                >
-                                                    Edit
-                                                </Button>
-                                            ) : (
-                                                <Button
-                                                    variant="outline-secondary"
-                                                    size="sm"
-                                                    onClick={() => onViewTask(task)}
-                                                >
-                                                    View
-                                                </Button>
-                                            )}
-                                            {isOwner ? (
-                                                <Button
-                                                    variant="outline-danger"
-                                                    size="sm"
-                                                    onClick={() => void onDeleteTask(task.TaskUID)}
-                                                    disabled={isSaving}
-                                                >
-                                                    Delete
-                                                </Button>
-                                            ) : null}
-                                        </div>
+                                        <Button
+                                            variant={taskCanEdit ? 'outline-primary' : 'outline-secondary'}
+                                            size="sm"
+                                            onClick={() => onOpenTask(task)}
+                                        >
+                                            Open Task
+                                        </Button>
                                     </td>
                                 </tr>
                                 );

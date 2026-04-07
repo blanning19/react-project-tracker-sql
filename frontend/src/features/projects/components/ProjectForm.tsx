@@ -27,6 +27,7 @@ const createEmptyProject = (): ProjectPayload => ({
     Priority: 'Medium',
     Notes: '',
     SourceFileName: '',
+    PlannerImportMetadata: null,
 });
 
 function toEditableProject(project: ProjectRecord): ProjectPayload {
@@ -43,6 +44,7 @@ function toEditableProject(project: ProjectRecord): ProjectPayload {
         Priority: project.Priority,
         Notes: project.Notes,
         SourceFileName: project.SourceFileName,
+        PlannerImportMetadata: project.PlannerImportMetadata,
     };
 }
 

@@ -7,6 +7,19 @@ from .config import get_settings
 DEFAULT_USER_NAME = get_settings().default_user_name
 
 
+class ChecklistProgressModel(BaseModel):
+    completedItems: int = 0
+    totalItems: int = 0
+    percentComplete: int = 0
+
+
+class PlannerImportMetadataModel(BaseModel):
+    source: str = "planner"
+    importedAt: datetime | None = None
+    bucketCount: int = 0
+    labelNames: list[str] = Field(default_factory=list)
+
+
 class TaskBase(BaseModel):
     ProjectUID: int
     TaskName: str
@@ -23,6 +36,11 @@ class TaskBase(BaseModel):
     Status: str
     IsMilestone: bool = False
     Notes: str = ""
+    BucketName: str = ""
+    Labels: list[str] = Field(default_factory=list)
+    ChecklistItems: list[str] = Field(default_factory=list)
+    CompletedChecklistItems: list[str] = Field(default_factory=list)
+    ChecklistProgress: ChecklistProgressModel = Field(default_factory=ChecklistProgressModel)
 
     @model_validator(mode="after")
     def validate_task_dates(self) -> "TaskBase":
@@ -58,6 +76,7 @@ class ProjectBase(BaseModel):
     Priority: str
     Notes: str = ""
     SourceFileName: str
+    PlannerImportMetadata: PlannerImportMetadataModel | None = None
 
     @model_validator(mode="after")
     def validate_project_dates(self) -> "ProjectBase":
@@ -81,6 +100,47 @@ class ProjectRead(ProjectBase):
     CreatedDate: date
     IsOverdue: bool
     tasks: list[TaskRead] = []
+
+
+class PlannerImportTask(BaseModel):
+    TaskName: str
+    BucketName: str = ""
+    ResourceNames: str = ""
+    Start: date
+    Finish: date
+    PercentComplete: int = Field(ge=0, le=100, default=0)
+    Status: str = "Not Started"
+    Priority: str = "Medium"
+    Notes: str = ""
+    Labels: list[str] = Field(default_factory=list)
+    ChecklistItems: list[str] = Field(default_factory=list)
+    CompletedChecklistItems: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "PlannerImportTask":
+        if self.Finish < self.Start:
+            raise ValueError("Planner task finish date must be on or after the start date.")
+        return self
+
+
+class PlannerImportRequest(BaseModel):
+    ProjectName: str
+    ProjectManager: str
+    SourceFileName: str
+    ImportedBy: str
+    Start: date
+    Finish: date
+    Status: str
+    Priority: str
+    Notes: str = ""
+    PlannerImportMetadata: PlannerImportMetadataModel = Field(default_factory=PlannerImportMetadataModel)
+    tasks: list[PlannerImportTask] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_project_dates(self) -> "PlannerImportRequest":
+        if self.Finish < self.Start:
+            raise ValueError("Planner project finish date must be on or after the start date.")
+        return self
 
 
 class UserSettingsBase(BaseModel):

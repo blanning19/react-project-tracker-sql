@@ -32,6 +32,7 @@ class Project(Base):
     Priority: Mapped[str] = mapped_column(String(30), nullable=False, default="Medium")
     Notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     SourceFileName: Mapped[str] = mapped_column(String(255), nullable=False)
+    PlannerImportMetadata: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     tasks: Mapped[list["Task"]] = relationship(
         back_populates="project", cascade="all, delete-orphan", order_by="Task.TaskUID"
@@ -61,6 +62,10 @@ class Task(Base):
     Status: Mapped[str] = mapped_column(String(50), nullable=False, default="Not Started")
     IsMilestone: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     Notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    BucketName: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    LabelsJson: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    ChecklistItemsJson: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    CompletedChecklistItemsJson: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
 
     project: Mapped[Project] = relationship(back_populates="tasks")
 

@@ -30,6 +30,15 @@ const createEmptyTask = (projectId?: number): TaskPayload => ({
     Status: 'Not Started',
     IsMilestone: false,
     Notes: '',
+    BucketName: '',
+    Labels: [],
+    ChecklistItems: [],
+    CompletedChecklistItems: [],
+    ChecklistProgress: {
+        completedItems: 0,
+        totalItems: 0,
+        percentComplete: 0,
+    },
 });
 
 function toEditableTask(task: TaskRecord): TaskPayload {
@@ -50,6 +59,11 @@ function toEditableTask(task: TaskRecord): TaskPayload {
         Status: task.Status,
         IsMilestone: task.IsMilestone,
         Notes: task.Notes,
+        BucketName: task.BucketName,
+        Labels: task.Labels,
+        ChecklistItems: task.ChecklistItems,
+        CompletedChecklistItems: task.CompletedChecklistItems,
+        ChecklistProgress: task.ChecklistProgress,
     };
 }
 

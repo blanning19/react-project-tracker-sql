@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { Alert, Badge, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { buildPermissionContext, canEditProject, canEditTask } from '../../../shared/permissions/workspacePermissions';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
-import { isTaskAssignedToUser } from '../../../shared/utils/assignees';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 import { ProjectRecord, TaskRecord } from '../../../shared/types/models';
+import { getProjectTypeLabel, isPlannerProject } from '../../../shared/utils/projectType';
 import { useProjectData } from '../hooks/useProjectData';
 
 const sortFieldOptions: Array<keyof ProjectRecord> = ['ProjectName', 'Finish', 'Status', 'PercentComplete', 'Priority'];
@@ -19,39 +20,37 @@ interface MyTaskRow {
 
 export function MyDashboardPage() {
     const { preferences, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
-    const { currentUserName, isLoading: isCurrentUserLoading } = useCurrentUser();
+    const { currentUserName, userAccess, isLoading: isCurrentUserLoading } = useCurrentUser();
     const { projects, isLoading, error } = useProjectData(preferences);
-
-    const normalizedUserName = currentUserName.toLowerCase();
+    const permissionContext = useMemo(
+        () => buildPermissionContext(currentUserName, userAccess),
+        [currentUserName, userAccess],
+    );
 
     const myProjects = useMemo(
         () =>
             projects.filter((project) => {
-                const ownsProject = project.ProjectManager.toLowerCase() === normalizedUserName;
+                const ownsProject = canEditProject(project, permissionContext);
                 const ownsOpenProject = ownsProject && project.Status.toLowerCase() !== 'completed';
-                const hasAssignedTask = project.tasks.some((task) =>
-                    isTaskAssignedToUser(task.ResourceNames, currentUserName),
-                );
+                const hasAssignedTask = project.tasks.some((task) => canEditTask(task, project, permissionContext));
 
                 return ownsOpenProject || hasAssignedTask;
             }),
-        [currentUserName, normalizedUserName, projects],
+        [permissionContext, projects],
     );
 
     const myOpenTasks = useMemo<MyTaskRow[]>(
         () =>
             myProjects.flatMap((project) => {
-                const isOwner = project.ProjectManager.toLowerCase() === normalizedUserName;
+                const isOwner = canEditProject(project, permissionContext);
 
                 return project.tasks
                     .filter(
-                        (task) =>
-                            task.Status.toLowerCase() !== 'completed' &&
-                            isTaskAssignedToUser(task.ResourceNames, currentUserName),
+                        (task) => task.Status.toLowerCase() !== 'completed' && canEditTask(task, project, permissionContext),
                     )
                     .map((task) => ({ project, task, isOwner }));
             }),
-        [currentUserName, myProjects, normalizedUserName],
+        [myProjects, permissionContext],
     );
 
     if (isLoading || isSettingsLoading || isCurrentUserLoading) {
@@ -76,9 +75,14 @@ export function MyDashboardPage() {
                                     jump straight into your active work for {currentUserName}.
                                 </p>
                             </div>
-                            <Link to="/projects/new" className="btn btn-primary">
-                                Create or Import Project
-                            </Link>
+                            <div className="d-flex gap-2 flex-wrap">
+                                <Link to="/import-planner" className="btn btn-outline-primary">
+                                    Import Planner
+                                </Link>
+                                <Link to="/projects/new" className="btn btn-primary">
+                                    Create or Import Project
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </Col>
@@ -144,7 +148,7 @@ export function MyDashboardPage() {
                                     <th>Finish</th>
                                     <th>Priority</th>
                                     <th>My Open Tasks</th>
-                                    <th className="text-end">Action</th>
+                                    <th className="text-end" />
                                 </tr>
                             </thead>
                             <tbody>
@@ -155,6 +159,11 @@ export function MyDashboardPage() {
                                             <small className="text-body-secondary">
                                                 ProjectUID {project.ProjectUID}
                                             </small>
+                                            <div className="mt-1">
+                                                <Badge bg={isPlannerProject(project) ? 'primary' : 'secondary'}>
+                                                    {getProjectTypeLabel(project)}
+                                                </Badge>
+                                            </div>
                                         </td>
                                         <td>{project.ProjectManager}</td>
                                         <td>
@@ -168,9 +177,7 @@ export function MyDashboardPage() {
                                         <td>
                                             {
                                                 project.tasks.filter(
-                                                    (task) =>
-                                                        task.Status.toLowerCase() !== 'completed' &&
-                                                        isTaskAssignedToUser(task.ResourceNames, currentUserName),
+                                                    (task) => task.Status.toLowerCase() !== 'completed' && canEditTask(task, project, permissionContext),
                                                 ).length
                                             }
                                         </td>
@@ -219,7 +226,7 @@ export function MyDashboardPage() {
                                     <th>Finish</th>
                                     <th>Complete</th>
                                     <th>Access</th>
-                                    <th className="text-end">Action</th>
+                                    <th className="text-end" />
                                 </tr>
                             </thead>
                             <tbody>

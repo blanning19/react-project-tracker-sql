@@ -1,6 +1,7 @@
 import { Badge, Button, Card, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { SortDirection, ProjectRecord } from '../../../shared/types/models';
+import { getProjectTypeLabel, isPlannerProject } from '../../../shared/utils/projectType';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
 
@@ -63,7 +64,7 @@ export function ProjectSummaryTable({
                                 <th>{renderSortLabel('Status', 'Status')}</th>
                                 <th>{renderSortLabel('Finish', 'Finish')}</th>
                                 <th>{renderSortLabel('Open Tasks', 'OpenTasks')}</th>
-                                {actionLabel ? <th className="text-end">Action</th> : null}
+                                {actionLabel ? <th className="text-end" /> : null}
                             </tr>
                         </thead>
                         <tbody>
@@ -72,6 +73,11 @@ export function ProjectSummaryTable({
                                     <td>
                                         <div className="fw-semibold">{project.ProjectName}</div>
                                         <small className="text-body-secondary">ProjectUID {project.ProjectUID}</small>
+                                        <div className="mt-1">
+                                            <Badge bg={isPlannerProject(project) ? 'primary' : 'secondary'}>
+                                                {getProjectTypeLabel(project)}
+                                            </Badge>
+                                        </div>
                                     </td>
                                     <td>{project.ProjectManager}</td>
                                     <td>{formatDate(project.CreatedDate)}</td>
