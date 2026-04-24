@@ -28,12 +28,6 @@ export function AppLayout() {
                             My Work
                         </NavLink>
                         <NavLink
-                            to="/import-planner"
-                            className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-                        >
-                            Import Planner
-                        </NavLink>
-                        <NavLink
                             to="/settings"
                             className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
                         >

@@ -1,5 +1,7 @@
+import { isCompletedStatus } from '../constants/projectUi';
+
 export function getStatusClass(status: string) {
-    switch (status.toLowerCase()) {
+    switch (status.trim().toLowerCase()) {
         case 'completed':
             return 'success';
         case 'on track':
@@ -16,3 +18,5 @@ export function getStatusClass(status: string) {
             return 'secondary';
     }
 }
+
+export { isCompletedStatus };

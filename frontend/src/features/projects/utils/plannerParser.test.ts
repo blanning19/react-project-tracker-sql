@@ -37,4 +37,15 @@ describe('parsePlannerWorkbook', () => {
         });
         expect(parsedProject.PlannerImportMetadata.bucketCount).toBe(1);
     });
+
+    it('rejects invalid task dates instead of silently defaulting them', async () => {
+        const file = createWorkbookFile([
+            ['Task Name', 'Bucket Name', 'Assigned To', 'Start Date', 'Due Date', 'Labels', 'Progress'],
+            ['Draft launch plan', 'Backlog', 'Workspace User', 'not-a-date', '2026-04-12', 'Blue; Red', 'In Progress'],
+        ]);
+
+        await expect(parsePlannerWorkbook(file, 'Workspace User')).rejects.toThrow(
+            'Task "Draft launch plan" has an invalid start date: "not-a-date".',
+        );
+    });
 });

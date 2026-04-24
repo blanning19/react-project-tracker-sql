@@ -14,6 +14,37 @@ import { getStatusClass } from '../../../shared/utils/status';
 import styles from './ProjectBoardView.module.css';
 
 const SUCCESS_MESSAGE_DURATION = 3000;
+const ALL_FILTER_VALUE = 'All';
+
+function normalizeBucketName(bucketName: string): string {
+    return bucketName.trim() || 'Unbucketed';
+}
+
+function buildTaskPayload(task: TaskRecord, nextBucketName = task.BucketName): TaskPayload {
+    return {
+        TaskUID: task.TaskUID,
+        ProjectUID: task.ProjectUID,
+        TaskName: task.TaskName,
+        OutlineLevel: task.OutlineLevel,
+        OutlineNumber: task.OutlineNumber,
+        WBS: task.WBS,
+        IsSummary: task.IsSummary,
+        Predecessors: task.Predecessors,
+        ResourceNames: task.ResourceNames,
+        Start: task.Start,
+        Finish: task.Finish,
+        DurationDays: task.DurationDays,
+        PercentComplete: task.PercentComplete,
+        Status: task.Status,
+        IsMilestone: task.IsMilestone,
+        Notes: task.Notes,
+        BucketName: nextBucketName,
+        Labels: task.Labels,
+        ChecklistItems: task.ChecklistItems,
+        CompletedChecklistItems: task.CompletedChecklistItems,
+        ChecklistProgress: task.ChecklistProgress,
+    };
+}
 
 interface ProjectBoardViewProps {
     project: ProjectRecord;
@@ -78,9 +109,10 @@ interface BoardColumnProps {
     isActive: boolean;
     tasks: TaskRecord[];
     onOpenTask: (task: TaskRecord) => void;
+    dragEnabled: boolean;
 }
 
-function BoardColumn({ bucketName, isActive, tasks, onOpenTask }: BoardColumnProps) {
+function BoardColumn({ bucketName, isActive, tasks, onOpenTask, dragEnabled }: BoardColumnProps) {
     const { isOver, setNodeRef } = useDroppable({
         id: bucketName,
     });
@@ -94,7 +126,7 @@ function BoardColumn({ bucketName, isActive, tasks, onOpenTask }: BoardColumnPro
             <div className={styles.columnBody}>
                 {tasks.length === 0 ? <div className={styles.emptyState}>Drop tasks here.</div> : null}
                 {tasks.map((task) => (
-                    <BoardTaskCard key={task.TaskUID} task={task} onOpenTask={onOpenTask} />
+                    <BoardTaskCard key={task.TaskUID} task={task} onOpenTask={onOpenTask} draggable={dragEnabled} />
                 ))}
             </div>
         </div>
@@ -104,16 +136,21 @@ function BoardColumn({ bucketName, isActive, tasks, onOpenTask }: BoardColumnPro
 export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoardViewProps) {
     const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All');
-    const [labelFilter, setLabelFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState(ALL_FILTER_VALUE);
+    const [labelFilter, setLabelFilter] = useState(ALL_FILTER_VALUE);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [movingTaskId, setMovingTaskId] = useState<number | null>(null);
 
     const boardTasks = useMemo(
-        () => project.tasks.filter((task) => !task.IsSummary && task.BucketName.trim().length > 0),
+        () =>
+            project.tasks
+                .filter((task) => !task.IsSummary && task.BucketName.trim().length > 0)
+                .map((task) => ({ ...task, BucketName: normalizeBucketName(task.BucketName) })),
         [project.tasks],
     );
     const bucketNames = useMemo(
-        () => Array.from(new Set(boardTasks.map((task) => task.BucketName.trim() || 'Unbucketed'))),
+        () => Array.from(new Set(boardTasks.map((task) => task.BucketName))),
         [boardTasks],
     );
     const availableLabels = useMemo(
@@ -127,22 +164,31 @@ export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoa
     const filteredTasks = useMemo(
         () =>
             boardTasks.filter((task) => {
+                const normalizedSearch = searchTerm.trim().toLowerCase();
                 const matchesSearch =
-                    searchTerm.trim().length === 0 ||
-                    task.TaskName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    task.ResourceNames.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesStatus = statusFilter === 'All' || task.Status === statusFilter;
-                const matchesLabel = labelFilter === 'All' || task.Labels.includes(labelFilter);
+                    normalizedSearch.length === 0 ||
+                    task.TaskName.toLowerCase().includes(normalizedSearch) ||
+                    task.ResourceNames.toLowerCase().includes(normalizedSearch);
+                const matchesStatus = statusFilter === ALL_FILTER_VALUE || task.Status === statusFilter;
+                const matchesLabel = labelFilter === ALL_FILTER_VALUE || task.Labels.includes(labelFilter);
                 return matchesSearch && matchesStatus && matchesLabel;
             }),
         [boardTasks, labelFilter, searchTerm, statusFilter],
     );
     const groupedTasks = useMemo(
-        () =>
-            bucketNames.reduce<Record<string, TaskRecord[]>>((groups, bucketName) => {
-                groups[bucketName] = filteredTasks.filter((task) => (task.BucketName || 'Unbucketed') === bucketName);
-                return groups;
-            }, {}),
+        () => {
+            const groups = bucketNames.reduce<Record<string, TaskRecord[]>>((currentGroups, bucketName) => {
+                currentGroups[bucketName] = [];
+                return currentGroups;
+            }, {});
+
+            for (const task of filteredTasks) {
+                groups[task.BucketName] ??= [];
+                groups[task.BucketName].push(task);
+            }
+
+            return groups;
+        },
         [bucketNames, filteredTasks],
     );
     const activeTask = useMemo(
@@ -169,37 +215,21 @@ export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoa
 
         const task = active.data.current?.task as TaskRecord | undefined;
         const nextBucketName = String(over.id);
-        if (!task || task.BucketName === nextBucketName) {
+        if (!task || task.BucketName === nextBucketName || movingTaskId) {
             return;
         }
 
-        await onTaskSave(
-            {
-                TaskUID: task.TaskUID,
-                ProjectUID: task.ProjectUID,
-                TaskName: task.TaskName,
-                OutlineLevel: task.OutlineLevel,
-                OutlineNumber: task.OutlineNumber,
-                WBS: task.WBS,
-                IsSummary: task.IsSummary,
-                Predecessors: task.Predecessors,
-                ResourceNames: task.ResourceNames,
-                Start: task.Start,
-                Finish: task.Finish,
-                DurationDays: task.DurationDays,
-                PercentComplete: task.PercentComplete,
-                Status: task.Status,
-                IsMilestone: task.IsMilestone,
-                Notes: task.Notes,
-                BucketName: nextBucketName,
-                Labels: task.Labels,
-                ChecklistItems: task.ChecklistItems,
-                CompletedChecklistItems: task.CompletedChecklistItems,
-                ChecklistProgress: task.ChecklistProgress,
-            },
-            task.TaskUID,
-        );
-        setSuccessMessage(`Moved "${task.TaskName}" to ${nextBucketName}.`);
+        setErrorMessage(null);
+        setMovingTaskId(task.TaskUID);
+
+        try {
+            await onTaskSave(buildTaskPayload(task, nextBucketName), task.TaskUID);
+            setSuccessMessage(`Moved "${task.TaskName}" to ${nextBucketName}.`);
+        } catch (caughtError) {
+            setErrorMessage(caughtError instanceof Error ? caughtError.message : 'Unable to move the task right now.');
+        } finally {
+            setMovingTaskId(null);
+        }
     }
 
     function handleDragStart(event: DragStartEvent) {
@@ -214,6 +244,7 @@ export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoa
     return (
         <div className={styles.boardShell}>
             {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
+            {errorMessage ? <Alert variant="danger">{errorMessage}</Alert> : null}
 
             <div className={styles.statsGrid}>
                 <div>
@@ -255,7 +286,7 @@ export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoa
                     <Form.Group>
                         <Form.Label className="fw-semibold">Status</Form.Label>
                         <Form.Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                            <option value="All">All statuses</option>
+                            <option value={ALL_FILTER_VALUE}>All statuses</option>
                             {availableStatuses.map((status) => (
                                 <option key={status} value={status}>
                                     {status}
@@ -266,7 +297,7 @@ export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoa
                     <Form.Group>
                         <Form.Label className="fw-semibold">Label</Form.Label>
                         <Form.Select value={labelFilter} onChange={(event) => setLabelFilter(event.target.value)}>
-                            <option value="All">All labels</option>
+                            <option value={ALL_FILTER_VALUE}>All labels</option>
                             {availableLabels.map((label) => (
                                 <option key={label} value={label}>
                                     {label}
@@ -284,6 +315,7 @@ export function ProjectBoardView({ project, onOpenTask, onTaskSave }: ProjectBoa
                             key={bucketName}
                             bucketName={bucketName}
                             isActive={activeTask?.BucketName === bucketName}
+                            dragEnabled={movingTaskId === null}
                             tasks={groupedTasks[bucketName] ?? []}
                             onOpenTask={onOpenTask}
                         />

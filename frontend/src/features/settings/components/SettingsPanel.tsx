@@ -33,7 +33,7 @@ export function SettingsPanel() {
                         <div>
                             <div className="fw-semibold">Dark Mode</div>
                             <div className="text-body-secondary small">
-                                Use a darker workspace theme across Home and My Dashboard.
+                                Use a darker workspace theme across Home and My Work.
                             </div>
                         </div>
                         <Form.Check

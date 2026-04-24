@@ -58,7 +58,7 @@ describe('ProjectSummaryTable', () => {
         const onSort = vi.fn();
 
         render(
-            <MemoryRouter>
+            <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                 <ProjectSummaryTable
                     projects={[sampleProject]}
                     title="All Projects"

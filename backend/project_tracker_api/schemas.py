@@ -1,10 +1,25 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .config import get_settings
 
 DEFAULT_USER_NAME = get_settings().default_user_name
+
+
+def normalize_string_list(values: list[str]) -> list[str]:
+    normalized_values: list[str] = []
+    seen_values: set[str] = set()
+
+    for value in values:
+        normalized_value = str(value).strip()
+        normalized_key = normalized_value.lower()
+        if not normalized_value or normalized_key in seen_values:
+            continue
+        normalized_values.append(normalized_value)
+        seen_values.add(normalized_key)
+
+    return normalized_values
 
 
 class ChecklistProgressModel(BaseModel):
@@ -42,10 +57,28 @@ class TaskBase(BaseModel):
     CompletedChecklistItems: list[str] = Field(default_factory=list)
     ChecklistProgress: ChecklistProgressModel = Field(default_factory=ChecklistProgressModel)
 
+    @field_validator("Labels", "ChecklistItems", "CompletedChecklistItems", mode="before")
+    @classmethod
+    def normalize_list_fields(cls, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            return [str(value)]
+        return value
+
     @model_validator(mode="after")
     def validate_task_dates(self) -> "TaskBase":
         if self.Finish < self.Start:
             raise ValueError("Finish date must be on or after the start date.")
+        self.Labels = normalize_string_list(self.Labels)
+        self.ChecklistItems = normalize_string_list(self.ChecklistItems)
+        self.CompletedChecklistItems = normalize_string_list(self.CompletedChecklistItems)
+        checklist_lookup = {item.lower() for item in self.ChecklistItems}
+        invalid_completed_items = [
+            item for item in self.CompletedChecklistItems if item.lower() not in checklist_lookup
+        ]
+        if invalid_completed_items:
+            raise ValueError("Completed checklist items must also exist in ChecklistItems.")
         return self
 
 
@@ -99,7 +132,7 @@ class ProjectRead(ProjectBase):
     ProjectUID: int
     CreatedDate: date
     IsOverdue: bool
-    tasks: list[TaskRead] = []
+    tasks: list[TaskRead] = Field(default_factory=list)
 
 
 class PlannerImportTask(BaseModel):
@@ -116,10 +149,28 @@ class PlannerImportTask(BaseModel):
     ChecklistItems: list[str] = Field(default_factory=list)
     CompletedChecklistItems: list[str] = Field(default_factory=list)
 
+    @field_validator("Labels", "ChecklistItems", "CompletedChecklistItems", mode="before")
+    @classmethod
+    def normalize_list_fields(cls, value):
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            return [str(value)]
+        return value
+
     @model_validator(mode="after")
     def validate_dates(self) -> "PlannerImportTask":
         if self.Finish < self.Start:
             raise ValueError("Planner task finish date must be on or after the start date.")
+        self.Labels = normalize_string_list(self.Labels)
+        self.ChecklistItems = normalize_string_list(self.ChecklistItems)
+        self.CompletedChecklistItems = normalize_string_list(self.CompletedChecklistItems)
+        checklist_lookup = {item.lower() for item in self.ChecklistItems}
+        invalid_completed_items = [
+            item for item in self.CompletedChecklistItems if item.lower() not in checklist_lookup
+        ]
+        if invalid_completed_items:
+            raise ValueError("Completed checklist items must also exist in ChecklistItems.")
         return self
 
 
@@ -140,6 +191,8 @@ class PlannerImportRequest(BaseModel):
     def validate_project_dates(self) -> "PlannerImportRequest":
         if self.Finish < self.Start:
             raise ValueError("Planner project finish date must be on or after the start date.")
+        if not self.tasks:
+            raise ValueError("Planner imports must include at least one task.")
         return self
 
 

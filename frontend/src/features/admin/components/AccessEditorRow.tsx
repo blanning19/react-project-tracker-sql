@@ -57,7 +57,7 @@ export function AccessEditorRow({ currentUserName, userAccess, onSaved }: Access
     return (
         <tr>
             <td className="fw-semibold align-middle">{userAccess.userName}</td>
-            <td className="align-middle" style={{ minWidth: '10rem' }}>
+            <td className="align-middle access-editor-role-cell">
                 <Form.Select
                     size="sm"
                     value={formState.role}
@@ -96,7 +96,7 @@ export function AccessEditorRow({ currentUserName, userAccess, onSaved }: Access
                     aria-label={`Toggle log visibility for ${userAccess.userName}`}
                 />
             </td>
-            <td className="align-middle" style={{ minWidth: '16rem' }}>
+            <td className="align-middle access-editor-notes-cell">
                 <Form.Control
                     size="sm"
                     value={formState.notes}

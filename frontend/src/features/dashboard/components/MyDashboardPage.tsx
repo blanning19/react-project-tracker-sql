@@ -1,16 +1,23 @@
 import { useMemo } from 'react';
-import { Alert, Badge, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Card, Col, Container, Row, Spinner, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { buildPermissionContext, canEditProject, canEditTask } from '../../../shared/permissions/workspacePermissions';
+import {
+    buildPermissionContext,
+    canEditTask,
+    getProjectAccess,
+} from '../../../shared/permissions/workspacePermissions';
+import {
+    CREATE_OR_IMPORT_PROJECT_LABEL,
+    OVERDUE_LABEL,
+} from '../../../shared/constants/projectUi';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { formatDate } from '../../../shared/utils/date';
-import { getStatusClass } from '../../../shared/utils/status';
+import { getStatusClass, isCompletedStatus } from '../../../shared/utils/status';
 import { ProjectRecord, TaskRecord } from '../../../shared/types/models';
 import { getProjectTypeLabel, isPlannerProject } from '../../../shared/utils/projectType';
+import { DashboardSortControls } from './DashboardSortControls';
 import { useProjectData } from '../hooks/useProjectData';
-
-const sortFieldOptions: Array<keyof ProjectRecord> = ['ProjectName', 'Finish', 'Status', 'PercentComplete', 'Priority'];
 
 interface MyTaskRow {
     project: ProjectRecord;
@@ -30,11 +37,10 @@ export function MyDashboardPage() {
     const myProjects = useMemo(
         () =>
             projects.filter((project) => {
-                const ownsProject = canEditProject(project, permissionContext);
-                const ownsOpenProject = ownsProject && project.Status.toLowerCase() !== 'completed';
-                const hasAssignedTask = project.tasks.some((task) => canEditTask(task, project, permissionContext));
+                const access = getProjectAccess(project, permissionContext);
+                const ownsOpenProject = access.canEdit && !isCompletedStatus(project.Status);
 
-                return ownsOpenProject || hasAssignedTask;
+                return ownsOpenProject || access.hasAssignedTask;
             }),
         [permissionContext, projects],
     );
@@ -42,13 +48,11 @@ export function MyDashboardPage() {
     const myOpenTasks = useMemo<MyTaskRow[]>(
         () =>
             myProjects.flatMap((project) => {
-                const isOwner = canEditProject(project, permissionContext);
+                const access = getProjectAccess(project, permissionContext);
 
                 return project.tasks
-                    .filter(
-                        (task) => task.Status.toLowerCase() !== 'completed' && canEditTask(task, project, permissionContext),
-                    )
-                    .map((task) => ({ project, task, isOwner }));
+                    .filter((task) => !isCompletedStatus(task.Status) && canEditTask(task, project, permissionContext))
+                    .map((task) => ({ project, task, isOwner: access.isOwner }));
             }),
         [myProjects, permissionContext],
     );
@@ -75,14 +79,9 @@ export function MyDashboardPage() {
                                     jump straight into your active work for {currentUserName}.
                                 </p>
                             </div>
-                            <div className="d-flex gap-2 flex-wrap">
-                                <Link to="/import-planner" className="btn btn-outline-primary">
-                                    Import Planner
-                                </Link>
-                                <Link to="/projects/new" className="btn btn-primary">
-                                    Create or Import Project
-                                </Link>
-                            </div>
+                            <Link to="/projects/new" className="btn btn-primary">
+                                {CREATE_OR_IMPORT_PROJECT_LABEL}
+                            </Link>
                         </div>
                     </div>
                 </Col>
@@ -101,41 +100,11 @@ export function MyDashboardPage() {
                             <p className="text-uppercase small text-body-secondary mb-1">My Projects</p>
                             <h2 className="h5 mb-0">Projects with active ownership or assigned work</h2>
                         </div>
-                        <div className="d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
-                            <Form.Group>
-                                <Form.Label className="small text-body-secondary mb-1">Sort field</Form.Label>
-                                <Form.Select
-                                    value={preferences?.dashboardSortField ?? 'Finish'}
-                                    onChange={(event) =>
-                                        void setDashboardSort(
-                                            event.target.value as keyof ProjectRecord,
-                                            preferences?.dashboardSortDirection ?? 'asc',
-                                        )
-                                    }
-                                >
-                                    {sortFieldOptions.map((field) => (
-                                        <option key={field} value={field}>
-                                            {field}
-                                        </option>
-                                    ))}
-                                </Form.Select>
-                            </Form.Group>
-                            <Form.Group>
-                                <Form.Label className="small text-body-secondary mb-1">Direction</Form.Label>
-                                <Form.Select
-                                    value={preferences?.dashboardSortDirection ?? 'asc'}
-                                    onChange={(event) =>
-                                        void setDashboardSort(
-                                            preferences?.dashboardSortField ?? 'Finish',
-                                            event.target.value as 'asc' | 'desc',
-                                        )
-                                    }
-                                >
-                                    <option value="asc">Ascending</option>
-                                    <option value="desc">Descending</option>
-                                </Form.Select>
-                            </Form.Group>
-                        </div>
+                        <DashboardSortControls
+                            sortField={preferences?.dashboardSortField ?? 'Finish'}
+                            sortDirection={preferences?.dashboardSortDirection ?? 'asc'}
+                            onChange={setDashboardSort}
+                        />
                     </div>
 
                     <div className="table-responsive mt-4">
@@ -169,18 +138,12 @@ export function MyDashboardPage() {
                                         <td>
                                             <div className="d-flex align-items-center gap-2 flex-wrap">
                                                 <Badge bg={getStatusClass(project.Status)}>{project.Status}</Badge>
-                                                {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                                {project.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                             </div>
                                         </td>
                                         <td>{formatDate(project.Finish)}</td>
                                         <td>{project.Priority}</td>
-                                        <td>
-                                            {
-                                                project.tasks.filter(
-                                                    (task) => task.Status.toLowerCase() !== 'completed' && canEditTask(task, project, permissionContext),
-                                                ).length
-                                            }
-                                        </td>
+                                        <td>{getProjectAccess(project, permissionContext).editableOpenTaskCount}</td>
                                         <td className="text-end">
                                             <Link
                                                 to={`/projects/${project.ProjectUID}?from=my-dashboard`}
@@ -240,7 +203,7 @@ export function MyDashboardPage() {
                                         <td>
                                             <div className="d-flex align-items-center gap-2 flex-wrap">
                                                 <Badge bg={getStatusClass(task.Status)}>{task.Status}</Badge>
-                                                {task.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                                {task.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                             </div>
                                         </td>
                                         <td>{formatDate(task.Finish)}</td>

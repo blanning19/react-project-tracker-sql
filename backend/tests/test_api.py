@@ -199,6 +199,156 @@ def test_import_project_rejects_empty_upload(client):
     assert response.json()["detail"] == "The uploaded file is empty."
 
 
+def test_import_planner_project_uses_server_user_for_audit_and_ownership(client):
+    response = client.post(
+        "/api/projects/import-planner",
+        params={"user_name": "Brad Lanning"},
+        json={
+            "ProjectName": "Planner rollout",
+            "ProjectManager": "Spoofed Manager",
+            "SourceFileName": "planner-export.xlsx",
+            "ImportedBy": "Spoofed Importer",
+            "Start": "2026-04-10",
+            "Finish": "2026-04-12",
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "Imported from Planner.",
+            "PlannerImportMetadata": {
+                "source": "planner",
+                "importedAt": "2026-04-07T10:00:00Z",
+                "bucketCount": 1,
+                "labelNames": ["Blue", "Red"],
+            },
+            "tasks": [
+                {
+                    "TaskName": "Draft launch plan",
+                    "BucketName": "Backlog",
+                    "ResourceNames": "Morgan Chen",
+                    "Start": "2026-04-10",
+                    "Finish": "2026-04-12",
+                    "PercentComplete": 50,
+                    "Status": "In Progress",
+                    "Priority": "Medium",
+                    "Notes": "",
+                    "Labels": ["Blue", "Red"],
+                    "ChecklistItems": ["Draft copy"],
+                    "CompletedChecklistItems": ["Draft copy"],
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["ProjectManager"] == "Brad Lanning"
+    assert payload["PlannerImportMetadata"]["source"] == "planner"
+    assert payload["tasks"][0]["BucketName"] == "Backlog"
+
+    import_events_response = client.get("/api/admin/import-events", params={"user_name": "Brad Lanning"})
+    assert import_events_response.status_code == 200
+    import_event = import_events_response.json()[0]
+    assert import_event["importedBy"] == "Brad Lanning"
+    assert import_event["status"] == "Succeeded"
+
+    managers_response = client.get("/api/managers")
+    assert managers_response.status_code == 200
+    assert any(manager["displayName"] == "Brad Lanning" for manager in managers_response.json())
+
+
+def test_import_planner_project_rejects_completed_checklist_items_not_present_in_checklist(client):
+    response = client.post(
+        "/api/projects/import-planner",
+        params={"user_name": "Brad Lanning"},
+        json={
+            "ProjectName": "Planner rollout",
+            "ProjectManager": "Brad Lanning",
+            "SourceFileName": "planner-export.xlsx",
+            "ImportedBy": "Brad Lanning",
+            "Start": "2026-04-10",
+            "Finish": "2026-04-12",
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "Imported from Planner.",
+            "PlannerImportMetadata": {
+                "source": "planner",
+                "importedAt": "2026-04-07T10:00:00Z",
+                "bucketCount": 1,
+                "labelNames": ["Blue", "Red"],
+            },
+            "tasks": [
+                {
+                    "TaskName": "Draft launch plan",
+                    "BucketName": "Backlog",
+                    "ResourceNames": "Morgan Chen",
+                    "Start": "2026-04-10",
+                    "Finish": "2026-04-12",
+                    "PercentComplete": 50,
+                    "Status": "In Progress",
+                    "Priority": "Medium",
+                    "Notes": "",
+                    "Labels": ["Blue", "Blue", "Red"],
+                    "ChecklistItems": ["Draft copy"],
+                    "CompletedChecklistItems": ["Missing item"],
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_task_rejects_completed_checklist_items_not_present_in_checklist(client):
+    project_response = client.post(
+        "/api/projects",
+        json={
+            "ProjectName": "Checklist validation",
+            "ProjectManager": "Ava Patel",
+            "CalendarName": "Standard",
+            "Start": "2026-03-01",
+            "Finish": "2026-03-15",
+            "DurationDays": 14,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "Priority": "Medium",
+            "Notes": "",
+            "SourceFileName": "manual",
+        },
+    )
+    project_uid = project_response.json()["ProjectUID"]
+
+    create_response = client.post(
+        "/api/tasks",
+        json={
+            "ProjectUID": project_uid,
+            "TaskName": "Draft project plan",
+            "OutlineLevel": 1,
+            "OutlineNumber": "1",
+            "WBS": "1",
+            "IsSummary": False,
+            "Predecessors": "",
+            "ResourceNames": "Ava Patel",
+            "Start": "2026-03-02",
+            "Finish": "2026-03-05",
+            "DurationDays": 3,
+            "PercentComplete": 0,
+            "Status": "Not Started",
+            "IsMilestone": False,
+            "Notes": "",
+            "BucketName": "",
+            "Labels": ["Blue", "Blue"],
+            "ChecklistItems": ["Draft copy"],
+            "CompletedChecklistItems": ["Review copy"],
+            "ChecklistProgress": {
+                "completedItems": 1,
+                "totalItems": 1,
+                "percentComplete": 100,
+            },
+        },
+    )
+
+    assert create_response.status_code == 422
+
+
 def test_task_save_derives_duration_from_start_and_finish(client):
     project_response = client.post(
         "/api/projects",

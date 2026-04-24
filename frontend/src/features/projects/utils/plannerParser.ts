@@ -109,19 +109,20 @@ function splitValues(value: string): string[] {
         .filter(Boolean);
 }
 
-function parseDateValue(value: string): string {
+function parseDateValue(value: string, fieldLabel: string, taskName: string): string | null {
     if (!value) {
-        return new Date().toISOString().slice(0, 10);
+        return null;
     }
 
-    const workbookDate = XLSX.SSF.parse_date_code(Number(value));
-    if (!Number.isNaN(Number(value)) && workbookDate) {
+    const numericValue = Number(value);
+    const workbookDate = XLSX.SSF.parse_date_code(numericValue);
+    if (!Number.isNaN(numericValue) && workbookDate) {
         return new Date(Date.UTC(workbookDate.y, workbookDate.m - 1, workbookDate.d)).toISOString().slice(0, 10);
     }
 
     const parsedDate = new Date(value);
     if (Number.isNaN(parsedDate.getTime())) {
-        return new Date().toISOString().slice(0, 10);
+        throw new Error(`Task "${taskName}" has an invalid ${fieldLabel}: "${value}".`);
     }
 
     return parsedDate.toISOString().slice(0, 10);
@@ -182,15 +183,25 @@ function buildPlannerTask(row: PlannerRow): ParsedPlannerTask | null {
         rowValue(row, 'completedchecklistitems', 'completedchecklist', 'completedchecklistitemtitles'),
     );
 
-    const start = parseDateValue(rowValue(row, 'startdate', 'start'));
-    const finish = parseDateValue(rowValue(row, 'duedate', 'finishdate', 'finish'));
+    const start = parseDateValue(rowValue(row, 'startdate', 'start'), 'start date', taskName);
+    const finish = parseDateValue(rowValue(row, 'duedate', 'finishdate', 'finish'), 'due date', taskName);
+    const resolvedStart = start ?? finish;
+    const resolvedFinish = finish ?? start;
+
+    if (!resolvedStart || !resolvedFinish) {
+        throw new Error(`Task "${taskName}" is missing both Start Date and Due Date.`);
+    }
+
+    if (resolvedFinish < resolvedStart) {
+        throw new Error(`Task "${taskName}" has a due date earlier than its start date.`);
+    }
 
     return {
         TaskName: taskName,
         BucketName: rowValue(row, 'bucketname', 'bucket') || 'Unbucketed',
         ResourceNames: splitValues(rowValue(row, 'assignedto', 'assignees', 'resources')).join(', '),
-        Start: start,
-        Finish: finish < start ? start : finish,
+        Start: resolvedStart,
+        Finish: resolvedFinish,
         PercentComplete: inferPercentComplete(row),
         Status: inferStatus(row),
         Priority: inferPriority(row),

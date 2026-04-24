@@ -1,8 +1,10 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
+from dataclasses import dataclass
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from .config import get_settings
@@ -18,128 +20,198 @@ class Base(DeclarativeBase):
     pass
 
 
+@dataclass(frozen=True)
+class LegacyColumnSpec:
+    table_name: str
+    column_name: str
+    add_statement: str
+    backfill_statement: str | None = None
+    set_not_null_statement: str | None = None
+
+
+PROJECT_COLUMN_SPECS: tuple[LegacyColumnSpec, ...] = (
+    LegacyColumnSpec(
+        table_name="projects",
+        column_name="CreatedDate",
+        add_statement='ALTER TABLE projects ADD COLUMN "CreatedDate" DATE DEFAULT CURRENT_DATE',
+        backfill_statement='UPDATE projects SET "CreatedDate" = CURRENT_DATE WHERE "CreatedDate" IS NULL',
+        set_not_null_statement='ALTER TABLE projects ALTER COLUMN "CreatedDate" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="projects",
+        column_name="CalendarName",
+        add_statement="ALTER TABLE projects ADD COLUMN \"CalendarName\" VARCHAR(150) DEFAULT ''",
+        backfill_statement='UPDATE projects SET "CalendarName" = \'\' WHERE "CalendarName" IS NULL',
+        set_not_null_statement='ALTER TABLE projects ALTER COLUMN "CalendarName" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="projects",
+        column_name="PlannerImportMetadata",
+        add_statement="ALTER TABLE projects ADD COLUMN \"PlannerImportMetadata\" TEXT DEFAULT ''",
+        backfill_statement='UPDATE projects SET "PlannerImportMetadata" = \'\' WHERE "PlannerImportMetadata" IS NULL',
+        set_not_null_statement='ALTER TABLE projects ALTER COLUMN "PlannerImportMetadata" SET NOT NULL',
+    ),
+)
+
+TASK_COLUMN_SPECS: tuple[LegacyColumnSpec, ...] = (
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="OutlineLevel",
+        add_statement='ALTER TABLE tasks ADD COLUMN "OutlineLevel" INTEGER DEFAULT 1',
+        backfill_statement='UPDATE tasks SET "OutlineLevel" = 1 WHERE "OutlineLevel" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "OutlineLevel" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="OutlineNumber",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"OutlineNumber\" VARCHAR(50) DEFAULT ''",
+        backfill_statement='UPDATE tasks SET "OutlineNumber" = \'\' WHERE "OutlineNumber" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "OutlineNumber" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="WBS",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"WBS\" VARCHAR(50) DEFAULT ''",
+        backfill_statement='UPDATE tasks SET "WBS" = \'\' WHERE "WBS" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "WBS" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="IsSummary",
+        add_statement='ALTER TABLE tasks ADD COLUMN "IsSummary" BOOLEAN DEFAULT FALSE',
+        backfill_statement='UPDATE tasks SET "IsSummary" = FALSE WHERE "IsSummary" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "IsSummary" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="Predecessors",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"Predecessors\" TEXT DEFAULT ''",
+        backfill_statement='UPDATE tasks SET "Predecessors" = \'\' WHERE "Predecessors" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "Predecessors" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="BucketName",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"BucketName\" VARCHAR(150) DEFAULT ''",
+        backfill_statement='UPDATE tasks SET "BucketName" = \'\' WHERE "BucketName" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "BucketName" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="LabelsJson",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"LabelsJson\" TEXT DEFAULT '[]'",
+        backfill_statement='UPDATE tasks SET "LabelsJson" = \'[]\' WHERE "LabelsJson" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "LabelsJson" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="ChecklistItemsJson",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"ChecklistItemsJson\" TEXT DEFAULT '[]'",
+        backfill_statement='UPDATE tasks SET "ChecklistItemsJson" = \'[]\' WHERE "ChecklistItemsJson" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "ChecklistItemsJson" SET NOT NULL',
+    ),
+    LegacyColumnSpec(
+        table_name="tasks",
+        column_name="CompletedChecklistItemsJson",
+        add_statement="ALTER TABLE tasks ADD COLUMN \"CompletedChecklistItemsJson\" TEXT DEFAULT '[]'",
+        backfill_statement='UPDATE tasks SET "CompletedChecklistItemsJson" = \'[]\' WHERE "CompletedChecklistItemsJson" IS NULL',
+        set_not_null_statement='ALTER TABLE tasks ALTER COLUMN "CompletedChecklistItemsJson" SET NOT NULL',
+    ),
+)
+
+IMPORT_EVENT_COLUMN_SPECS: tuple[LegacyColumnSpec, ...] = (
+    LegacyColumnSpec(
+        table_name="import_events",
+        column_name="correlation_id",
+        add_statement="ALTER TABLE import_events ADD COLUMN correlation_id VARCHAR(64) DEFAULT ''",
+        backfill_statement="UPDATE import_events SET correlation_id = '' WHERE correlation_id IS NULL",
+        set_not_null_statement="ALTER TABLE import_events ALTER COLUMN correlation_id SET NOT NULL",
+    ),
+    LegacyColumnSpec(
+        table_name="import_events",
+        column_name="failure_reason",
+        add_statement="ALTER TABLE import_events ADD COLUMN failure_reason VARCHAR(255) DEFAULT ''",
+        backfill_statement="UPDATE import_events SET failure_reason = '' WHERE failure_reason IS NULL",
+        set_not_null_statement="ALTER TABLE import_events ALTER COLUMN failure_reason SET NOT NULL",
+    ),
+    LegacyColumnSpec(
+        table_name="import_events",
+        column_name="technical_details",
+        add_statement="ALTER TABLE import_events ADD COLUMN technical_details TEXT DEFAULT ''",
+        backfill_statement="UPDATE import_events SET technical_details = '' WHERE technical_details IS NULL",
+        set_not_null_statement="ALTER TABLE import_events ALTER COLUMN technical_details SET NOT NULL",
+    ),
+)
+
+
+def execute_sql(connection: Connection, statement: str) -> None:
+    connection.execute(text(statement))
+
+
+def table_exists(connection: Connection, table_name: str) -> bool:
+    return table_name in inspect(connection).get_table_names()
+
+
+def current_columns(connection: Connection, table_name: str) -> set[str]:
+    return {column["name"] for column in inspect(connection).get_columns(table_name)}
+
+
+def supports_alter_column_not_null(connection: Connection) -> bool:
+    return connection.dialect.name == "postgresql"
+
+
+def ensure_legacy_columns(connection: Connection, specs: Iterable[LegacyColumnSpec]) -> None:
+    specs = tuple(specs)
+    if not specs:
+        return
+
+    table_name = specs[0].table_name
+    if not table_exists(connection, table_name):
+        return
+
+    existing_columns = current_columns(connection, table_name)
+    for spec in specs:
+        if spec.column_name in existing_columns:
+            continue
+        logger.info('Adding missing column %s."%s".', spec.table_name, spec.column_name)
+        execute_sql(connection, spec.add_statement)
+
+    refreshed_columns = current_columns(connection, table_name)
+    available_specs = [spec for spec in specs if spec.column_name in refreshed_columns]
+    for spec in available_specs:
+        if spec.backfill_statement:
+            execute_sql(connection, spec.backfill_statement)
+
+    if supports_alter_column_not_null(connection):
+        for spec in available_specs:
+            if spec.set_not_null_statement:
+                execute_sql(connection, spec.set_not_null_statement)
+
+
 def ensure_legacy_schema_columns() -> None:
     with engine.begin() as connection:
-        inspector = inspect(connection)
-
-        project_columns = {column["name"] for column in inspector.get_columns("projects")}
-        if "CreatedDate" not in project_columns:
-            logger.info('Adding missing column projects."CreatedDate".')
-            connection.execute(text('ALTER TABLE projects ADD COLUMN "CreatedDate" DATE DEFAULT CURRENT_DATE'))
-            connection.execute(text('UPDATE projects SET "CreatedDate" = CURRENT_DATE WHERE "CreatedDate" IS NULL'))
-            connection.execute(text('ALTER TABLE projects ALTER COLUMN "CreatedDate" SET NOT NULL'))
-        if "CalendarName" not in project_columns:
-            logger.info('Adding missing column projects."CalendarName".')
-            connection.execute(text("ALTER TABLE projects ADD COLUMN \"CalendarName\" VARCHAR(150) DEFAULT ''"))
-            connection.execute(text('UPDATE projects SET "CalendarName" = \'\' WHERE "CalendarName" IS NULL'))
-            connection.execute(text('ALTER TABLE projects ALTER COLUMN "CalendarName" SET NOT NULL'))
-        if "PlannerImportMetadata" not in project_columns:
-            logger.info('Adding missing column projects."PlannerImportMetadata".')
-            connection.execute(text("ALTER TABLE projects ADD COLUMN \"PlannerImportMetadata\" TEXT DEFAULT ''"))
-            connection.execute(
-                text(
-                    'UPDATE projects SET "PlannerImportMetadata" = \'\' '
-                    'WHERE "PlannerImportMetadata" IS NULL'
-                )
-            )
-            connection.execute(text('ALTER TABLE projects ALTER COLUMN "PlannerImportMetadata" SET NOT NULL'))
-
-        task_columns = {column["name"] for column in inspector.get_columns("tasks")}
-        task_column_statements = {
-            "OutlineLevel": 'ALTER TABLE tasks ADD COLUMN "OutlineLevel" INTEGER DEFAULT 1',
-            "OutlineNumber": "ALTER TABLE tasks ADD COLUMN \"OutlineNumber\" VARCHAR(50) DEFAULT ''",
-            "WBS": "ALTER TABLE tasks ADD COLUMN \"WBS\" VARCHAR(50) DEFAULT ''",
-            "IsSummary": 'ALTER TABLE tasks ADD COLUMN "IsSummary" BOOLEAN DEFAULT FALSE',
-            "Predecessors": "ALTER TABLE tasks ADD COLUMN \"Predecessors\" TEXT DEFAULT ''",
-            "BucketName": "ALTER TABLE tasks ADD COLUMN \"BucketName\" VARCHAR(150) DEFAULT ''",
-            "LabelsJson": "ALTER TABLE tasks ADD COLUMN \"LabelsJson\" TEXT DEFAULT '[]'",
-            "ChecklistItemsJson": "ALTER TABLE tasks ADD COLUMN \"ChecklistItemsJson\" TEXT DEFAULT '[]'",
-            "CompletedChecklistItemsJson": (
-                "ALTER TABLE tasks ADD COLUMN "
-                "\"CompletedChecklistItemsJson\" TEXT DEFAULT '[]'"
-            ),
-        }
-
-        for column_name, statement in task_column_statements.items():
-            if column_name not in task_columns:
-                logger.info('Adding missing column tasks."%s".', column_name)
-                connection.execute(text(statement))
-
-        refreshed_task_columns = {column["name"] for column in inspect(connection).get_columns("tasks")}
-        if {
-            "OutlineLevel",
-            "OutlineNumber",
-            "WBS",
-            "IsSummary",
-            "Predecessors",
-            "BucketName",
-            "LabelsJson",
-            "ChecklistItemsJson",
-            "CompletedChecklistItemsJson",
-        }.issubset(refreshed_task_columns):
-            connection.execute(text('UPDATE tasks SET "OutlineLevel" = 1 WHERE "OutlineLevel" IS NULL'))
-            connection.execute(text('UPDATE tasks SET "OutlineNumber" = \'\' WHERE "OutlineNumber" IS NULL'))
-            connection.execute(text('UPDATE tasks SET "WBS" = \'\' WHERE "WBS" IS NULL'))
-            connection.execute(text('UPDATE tasks SET "IsSummary" = FALSE WHERE "IsSummary" IS NULL'))
-            connection.execute(text('UPDATE tasks SET "Predecessors" = \'\' WHERE "Predecessors" IS NULL'))
-            connection.execute(text('UPDATE tasks SET "BucketName" = \'\' WHERE "BucketName" IS NULL'))
-            connection.execute(text('UPDATE tasks SET "LabelsJson" = \'[]\' WHERE "LabelsJson" IS NULL'))
-            connection.execute(
-                text('UPDATE tasks SET "ChecklistItemsJson" = \'[]\' WHERE "ChecklistItemsJson" IS NULL')
-            )
-            connection.execute(
-                text(
-                    'UPDATE tasks SET "CompletedChecklistItemsJson" = \'[]\' '
-                    'WHERE "CompletedChecklistItemsJson" IS NULL'
-                )
-            )
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "OutlineLevel" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "OutlineNumber" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "WBS" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "IsSummary" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "Predecessors" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "BucketName" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "LabelsJson" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "ChecklistItemsJson" SET NOT NULL'))
-            connection.execute(text('ALTER TABLE tasks ALTER COLUMN "CompletedChecklistItemsJson" SET NOT NULL'))
-
-        table_names = set(inspector.get_table_names())
-        if "import_events" in table_names:
-            import_event_columns = {column["name"] for column in inspector.get_columns("import_events")}
-            import_event_column_statements = {
-                "correlation_id": "ALTER TABLE import_events ADD COLUMN correlation_id VARCHAR(64) DEFAULT ''",
-                "failure_reason": "ALTER TABLE import_events ADD COLUMN failure_reason VARCHAR(255) DEFAULT ''",
-                "technical_details": "ALTER TABLE import_events ADD COLUMN technical_details TEXT DEFAULT ''",
-            }
-            for column_name, statement in import_event_column_statements.items():
-                if column_name not in import_event_columns:
-                    logger.info('Adding missing column import_events."%s".', column_name)
-                    connection.execute(text(statement))
-
-            refreshed_import_event_columns = {
-                column["name"] for column in inspect(connection).get_columns("import_events")
-            }
-            if {"correlation_id", "failure_reason", "technical_details"}.issubset(refreshed_import_event_columns):
-                connection.execute(text("UPDATE import_events SET correlation_id = '' WHERE correlation_id IS NULL"))
-                connection.execute(text("UPDATE import_events SET failure_reason = '' WHERE failure_reason IS NULL"))
-                connection.execute(
-                    text("UPDATE import_events SET technical_details = '' WHERE technical_details IS NULL")
-                )
-                connection.execute(text("ALTER TABLE import_events ALTER COLUMN correlation_id SET NOT NULL"))
-                connection.execute(text("ALTER TABLE import_events ALTER COLUMN failure_reason SET NOT NULL"))
-                connection.execute(text("ALTER TABLE import_events ALTER COLUMN technical_details SET NOT NULL"))
-
-            if connection.dialect.name == "postgresql":
-                sync_postgres_sequence(connection, "import_events", "import_event_id")
+        ensure_legacy_columns(connection, PROJECT_COLUMN_SPECS)
+        ensure_legacy_columns(connection, TASK_COLUMN_SPECS)
+        ensure_legacy_columns(connection, IMPORT_EVENT_COLUMN_SPECS)
 
         if connection.dialect.name == "postgresql":
-            if "projects" in table_names:
-                sync_postgres_sequence(connection, "projects", "ProjectUID")
-            if "tasks" in table_names:
-                sync_postgres_sequence(connection, "tasks", "TaskUID")
+            for table_name, column_name in (
+                ("import_events", "import_event_id"),
+                ("projects", "ProjectUID"),
+                ("tasks", "TaskUID"),
+                ("team_members", "member_id"),
+                ("managers", "manager_id"),
+            ):
+                if table_exists(connection, table_name):
+                    sync_postgres_sequence(connection, table_name, column_name)
 
 
-def sync_postgres_sequence(connection, table_name: str, column_name: str) -> None:
+def initialize_database_schema() -> None:
+    Base.metadata.create_all(bind=engine)
+    ensure_legacy_schema_columns()
+
+
+def sync_postgres_sequence(connection: Connection, table_name: str, column_name: str) -> None:
     sequence_name = connection.scalar(
         text("SELECT pg_get_serial_sequence(:table_name, :column_name)"),
         {"table_name": table_name, "column_name": column_name},

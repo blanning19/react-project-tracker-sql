@@ -2,44 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch } from '../../../shared/api/http';
 import { DEFAULT_USER_NAME } from '../../../shared/config/app';
 import { ProjectPayload, ProjectRecord, TaskPayload, TaskRecord, UserPreferences } from '../../../shared/types/models';
-
-function sortTasksByUid(tasks: TaskRecord[]): TaskRecord[] {
-    return [...tasks].sort((left, right) => left.TaskUID - right.TaskUID);
-}
-
-function calculateDurationDays(start: string, finish: string): number {
-    const startDate = new Date(`${start}T00:00:00`);
-    const finishDate = new Date(`${finish}T00:00:00`);
-    const millisecondsPerDay = 1000 * 60 * 60 * 24;
-    const diffInDays = Math.round((finishDate.getTime() - startDate.getTime()) / millisecondsPerDay);
-    return Math.max(1, diffInDays);
-}
-
-function isProjectOverdue(project: Pick<ProjectRecord, 'Finish' | 'PercentComplete' | 'Status'>): boolean {
-    return (
-        new Date(project.Finish) < new Date() &&
-        project.PercentComplete < 100 &&
-        project.Status.toLowerCase() !== 'completed'
-    );
-}
-
-function deriveProjectMetrics(project: ProjectRecord): ProjectRecord {
-    const percentComplete =
-        project.tasks.length > 0
-            ? Math.round(project.tasks.reduce((sum, task) => sum + task.PercentComplete, 0) / project.tasks.length)
-            : 0;
-
-    return {
-        ...project,
-        DurationDays: calculateDurationDays(project.Start, project.Finish),
-        PercentComplete: percentComplete,
-        IsOverdue: isProjectOverdue({ ...project, PercentComplete: percentComplete }),
-        tasks: sortTasksByUid(project.tasks),
-    };
-}
+import {
+    deriveProjectMetricsForLocalMutation,
+    normalizeProjectForClient,
+} from '../../../shared/utils/projectMetrics';
 
 function upsertProject(projects: ProjectRecord[], nextProject: ProjectRecord): ProjectRecord[] {
-    const normalizedProject = deriveProjectMetrics(nextProject);
+    const normalizedProject = normalizeProjectForClient(nextProject);
     const existingIndex = projects.findIndex((project) => project.ProjectUID === normalizedProject.ProjectUID);
 
     if (existingIndex === -1) {
@@ -70,7 +39,7 @@ function upsertTask(projects: ProjectRecord[], nextTask: TaskRecord): ProjectRec
                 : [...project.tasks.filter((task) => task.TaskUID !== nextTask.TaskUID), nextTask]
             : project.tasks.filter((task) => task.TaskUID !== nextTask.TaskUID);
 
-        return deriveProjectMetrics({ ...project, tasks: nextTasks });
+        return deriveProjectMetricsForLocalMutation({ ...project, tasks: nextTasks });
     });
 }
 
@@ -80,7 +49,7 @@ function removeTask(projects: ProjectRecord[], taskId: number): ProjectRecord[] 
             return project;
         }
 
-        return deriveProjectMetrics({
+        return deriveProjectMetricsForLocalMutation({
             ...project,
             tasks: project.tasks.filter((task) => task.TaskUID !== taskId),
         });
@@ -101,7 +70,7 @@ export function useProjectData(preferences: UserPreferences | null, currentUserN
         setError(null);
         try {
             const data = await apiFetch<ProjectRecord[]>('/projects');
-            setProjects(data.map(deriveProjectMetrics));
+            setProjects(data.map(normalizeProjectForClient));
             setSelectedProjectId((current) => current ?? data[0]?.ProjectUID);
         } catch (loadError) {
             setError(loadError instanceof Error ? loadError.message : 'Unable to load dashboard data.');

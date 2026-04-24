@@ -113,10 +113,7 @@ export function LogViewerPanel({ currentUserName, aroundTimestamp = null, correl
                         No log lines were found.
                     </Alert>
                 ) : (
-                    <div
-                        className="border rounded-3 p-3"
-                        style={{ maxHeight: '28rem', overflowY: 'auto', backgroundColor: 'var(--bs-tertiary-bg)' }}
-                    >
+                    <div className="border rounded-3 p-3 log-viewer-shell">
                         {logFile.lines.map((line) => (
                             <div
                                 key={line.lineNumber}
@@ -130,7 +127,7 @@ export function LogViewerPanel({ currentUserName, aroundTimestamp = null, correl
                                             : ''
                                 }`}
                             >
-                                <span className="text-body-secondary small" style={{ minWidth: '3.5rem' }}>
+                                <span className="text-body-secondary small log-viewer-line-number">
                                     {line.lineNumber}
                                 </span>
                                 <Badge bg={getVariant(line.level)}>{line.level}</Badge>
@@ -139,7 +136,7 @@ export function LogViewerPanel({ currentUserName, aroundTimestamp = null, correl
                                         Import
                                     </Badge>
                                 ) : null}
-                                <code className="small text-wrap" style={{ whiteSpace: 'pre-wrap' }}>
+                                <code className="small text-wrap log-viewer-line-content">
                                     {line.content}
                                 </code>
                             </div>

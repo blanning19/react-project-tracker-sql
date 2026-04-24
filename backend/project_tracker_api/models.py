@@ -83,14 +83,14 @@ class UserSetting(Base):
 class TeamMember(Base):
     __tablename__ = "team_members"
 
-    member_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    member_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     display_name: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
 
 
 class Manager(Base):
     __tablename__ = "managers"
 
-    manager_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    manager_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     display_name: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
 
 

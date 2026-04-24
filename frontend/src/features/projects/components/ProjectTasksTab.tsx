@@ -1,7 +1,7 @@
 import { Alert, Badge, Button, Card, Table } from 'react-bootstrap';
 import { ProjectRecord, TaskRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
-import { PermissionContext, canEditTask } from '../../../shared/permissions/workspacePermissions';
+import { getTaskAccess, PermissionContext } from '../../../shared/permissions/workspacePermissions';
 import { getStatusClass } from '../../../shared/utils/status';
 import { renderDependencyBadges } from './projectDetailUtils';
 
@@ -71,10 +71,10 @@ export function ProjectTasksTab({
                         </thead>
                         <tbody>
                             {visibleTasks.map((task) => {
-                                const taskCanEdit = canEditTask(task, project, permissionContext);
+                                const taskCanEdit = getTaskAccess(task, project, permissionContext).canEdit;
 
                                 return (
-                                <tr key={task.TaskUID}>
+                                    <tr key={task.TaskUID}>
                                     <td>
                                         <div
                                             className={task.IsSummary ? 'fw-semibold' : ''}

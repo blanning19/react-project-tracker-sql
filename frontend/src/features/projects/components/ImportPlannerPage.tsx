@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { BACK_TO_MY_DASHBOARD_LABEL } from '../../../shared/constants/projectUi';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { useProjectCreate } from '../hooks/useProjectCreate';
@@ -85,7 +86,7 @@ export function ImportPlannerPage() {
                                 </p>
                             </div>
                             <Button variant="outline-secondary" onClick={() => navigate('/my-dashboard')}>
-                                Back to My Dashboard
+                                {BACK_TO_MY_DASHBOARD_LABEL}
                             </Button>
                         </div>
                     </div>

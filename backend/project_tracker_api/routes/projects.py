@@ -124,9 +124,15 @@ async def import_project(user_name: str, file: UploadFile = File(...), db: Sessi
     status_code=status.HTTP_201_CREATED,
     summary="Import a project from Microsoft Planner workbook data",
 )
-def import_planner_project(payload: schemas.PlannerImportRequest, db: Session = Depends(get_db)):
+def import_planner_project(user_name: str, payload: schemas.PlannerImportRequest, db: Session = Depends(get_db)):
     correlation_id = uuid4().hex
-    return crud.import_planner_project(db, payload, correlation_id=correlation_id)
+    return crud.import_planner_project(
+        db,
+        payload,
+        imported_by=user_name,
+        project_manager=user_name,
+        correlation_id=correlation_id,
+    )
 
 
 @router.put("/api/projects/{project_id}", response_model=schemas.ProjectRead, summary="Update a project")

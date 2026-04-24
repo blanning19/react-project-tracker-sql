@@ -25,8 +25,7 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         if include_startup_db_init:
-            database.Base.metadata.create_all(bind=database.engine)
-            database.ensure_legacy_schema_columns()
+            database.initialize_database_schema()
             logger.info("Project Tracker API started.")
         yield
 

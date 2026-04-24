@@ -207,7 +207,10 @@ describe('ProjectDetailPage', () => {
         });
 
         render(
-            <MemoryRouter initialEntries={['/projects/1001?from=my-dashboard']}>
+            <MemoryRouter
+                initialEntries={['/projects/1001?from=my-dashboard']}
+                future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            >
                 <Routes>
                     <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
                 </Routes>

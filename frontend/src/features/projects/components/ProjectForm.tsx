@@ -1,7 +1,9 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { apiFetch, isAbortError } from '../../../shared/api/http';
+import { PRIORITY_OPTIONS, STATUS_OPTIONS } from '../../../shared/constants/projectUi';
 import { ManagerRecord, ProjectPayload, ProjectRecord } from '../../../shared/types/models';
+import { calculateDurationDays } from '../../../shared/utils/projectMetrics';
 
 interface ProjectFormProps {
     project?: ProjectRecord | null;
@@ -11,6 +13,8 @@ interface ProjectFormProps {
     showCreateAction?: boolean;
     footerActions?: ReactNode;
     readOnly?: boolean;
+    importInputId?: string;
+    showImportSection?: boolean;
 }
 
 const createEmptyProject = (): ProjectPayload => ({
@@ -48,18 +52,6 @@ function toEditableProject(project: ProjectRecord): ProjectPayload {
     };
 }
 
-function calculateDurationDays(start: string, finish: string): number {
-    const startDate = new Date(start);
-    const finishDate = new Date(finish);
-
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(finishDate.getTime())) {
-        return 1;
-    }
-
-    const millisecondsPerDay = 1000 * 60 * 60 * 24;
-    return Math.max(1, Math.round((finishDate.getTime() - startDate.getTime()) / millisecondsPerDay));
-}
-
 export function ProjectForm({
     project,
     onSave,
@@ -68,6 +60,8 @@ export function ProjectForm({
     showCreateAction = true,
     footerActions,
     readOnly = false,
+    importInputId = 'project-xml-import-input',
+    showImportSection = true,
 }: ProjectFormProps) {
     const [formState, setFormState] = useState<ProjectPayload>(createEmptyProject());
     const [managers, setManagers] = useState<ManagerRecord[]>([]);
@@ -165,11 +159,12 @@ export function ProjectForm({
                 </div>
                 <Form onSubmit={handleSubmit}>
                     <Row className="g-3">
-                        {!project && !readOnly && onImport ? (
+                        {!project && !readOnly && onImport && showImportSection ? (
                             <Col md={12}>
                                 <Form.Group>
                                     <Form.Label className="fw-semibold">Import Microsoft Project XML</Form.Label>
                                     <Form.Control
+                                        id={importInputId}
                                         type="file"
                                         accept=".xml"
                                         onChange={(event) =>
@@ -262,9 +257,9 @@ export function ProjectForm({
                                             setFormState({ ...formState, Priority: event.target.value })
                                         }
                                     >
-                                        <option>High</option>
-                                        <option>Medium</option>
-                                        <option>Low</option>
+                                        {PRIORITY_OPTIONS.map((priority) => (
+                                            <option key={priority}>{priority}</option>
+                                        ))}
                                     </Form.Select>
                                 )}
                             </Form.Group>
@@ -329,12 +324,9 @@ export function ProjectForm({
                                         value={formState.Status}
                                         onChange={(event) => setFormState({ ...formState, Status: event.target.value })}
                                     >
-                                        <option>Not Started</option>
-                                        <option>On Track</option>
-                                        <option>In Progress</option>
-                                        <option>At Risk</option>
-                                        <option>Blocked</option>
-                                        <option>Completed</option>
+                                        {STATUS_OPTIONS.map((status) => (
+                                            <option key={status}>{status}</option>
+                                        ))}
                                     </Form.Select>
                                 )}
                             </Form.Group>

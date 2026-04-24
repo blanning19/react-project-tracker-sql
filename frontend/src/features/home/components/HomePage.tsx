@@ -5,7 +5,9 @@ import { LiveClock } from '../../dashboard/components/LiveClock';
 import { HomeProjectSortField, ProjectSummaryTable } from './ProjectSummaryTable';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { useProjectData } from '../../dashboard/hooks/useProjectData';
+import { CREATE_OR_IMPORT_PROJECT_LABEL } from '../../../shared/constants/projectUi';
 import { SortDirection } from '../../../shared/types/models';
+import { countOpenTasks } from '../../../shared/utils/projectMetrics';
 
 const PROJECTS_PER_PAGE = 10;
 
@@ -21,8 +23,8 @@ export function HomePage() {
             const directionMultiplier = sortDirection === 'asc' ? 1 : -1;
 
             if (sortField === 'OpenTasks') {
-                const leftValue = left.tasks.filter((task) => task.Status.toLowerCase() !== 'completed').length;
-                const rightValue = right.tasks.filter((task) => task.Status.toLowerCase() !== 'completed').length;
+                const leftValue = countOpenTasks(left.tasks);
+                const rightValue = countOpenTasks(right.tasks);
                 return (leftValue - rightValue) * directionMultiplier;
             }
 
@@ -82,14 +84,9 @@ export function HomePage() {
                             </div>
                             <div className="d-flex flex-column align-items-lg-end gap-3">
                                 <LiveClock />
-                                <div className="d-flex gap-2 flex-wrap justify-content-lg-end">
-                                    <Link to="/import-planner" className="btn btn-outline-primary">
-                                        Import Planner
-                                    </Link>
-                                    <Link to="/projects/new" className="btn btn-primary">
-                                        Create or Import Project
-                                    </Link>
-                                </div>
+                                <Link to="/projects/new" className="btn btn-primary">
+                                    {CREATE_OR_IMPORT_PROJECT_LABEL}
+                                </Link>
                             </div>
                         </div>
                     </div>

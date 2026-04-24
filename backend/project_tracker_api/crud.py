@@ -2,7 +2,8 @@ import json
 import logging
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from . import admin_service, log_service, models, schemas
@@ -40,6 +41,62 @@ def serialize_json_list(value: str) -> list[str]:
     return [str(item).strip() for item in parsed_value if str(item).strip()]
 
 
+def json_list(value: list[str]) -> str:
+    return json.dumps(value)
+
+
+def task_lists_from_model(task: models.Task) -> tuple[list[str], list[str], list[str]]:
+    labels = serialize_json_list(task.LabelsJson)
+    checklist_items = serialize_json_list(task.ChecklistItemsJson)
+    completed_checklist_items = serialize_json_list(task.CompletedChecklistItemsJson)
+    return labels, checklist_items, completed_checklist_items
+
+
+def build_task_read_payload(task: models.Task) -> dict:
+    labels, checklist_items, completed_checklist_items = task_lists_from_model(task)
+    return {
+        "TaskUID": task.TaskUID,
+        "ProjectUID": task.ProjectUID,
+        "TaskName": task.TaskName,
+        "OutlineLevel": task.OutlineLevel,
+        "OutlineNumber": task.OutlineNumber,
+        "WBS": task.WBS,
+        "IsSummary": task.IsSummary,
+        "Predecessors": task.Predecessors,
+        "ResourceNames": task.ResourceNames,
+        "Start": task.Start,
+        "Finish": task.Finish,
+        "DurationDays": task.DurationDays,
+        "PercentComplete": task.PercentComplete,
+        "Status": task.Status,
+        "IsMilestone": task.IsMilestone,
+        "Notes": task.Notes,
+        "BucketName": task.BucketName,
+        "Labels": labels,
+        "ChecklistItems": checklist_items,
+        "CompletedChecklistItems": completed_checklist_items,
+        "ChecklistProgress": build_checklist_progress(task),
+        "IsOverdue": is_overdue(task.Finish, task.PercentComplete, task.Status),
+    }
+
+
+def apply_task_payload(task: models.Task, payload: schemas.TaskBase) -> None:
+    payload_data = payload.model_dump()
+    payload_data.pop("TaskUID", None)
+    payload_data["LabelsJson"] = json_list(payload.Labels)
+    payload_data["ChecklistItemsJson"] = json_list(payload.ChecklistItems)
+    payload_data["CompletedChecklistItemsJson"] = json_list(payload.CompletedChecklistItems)
+    payload_data.pop("Labels", None)
+    payload_data.pop("ChecklistItems", None)
+    payload_data.pop("CompletedChecklistItems", None)
+    payload_data.pop("ChecklistProgress", None)
+
+    for key, value in payload_data.items():
+        setattr(task, key, value)
+
+    task.DurationDays = calculate_duration_days(task.Start, task.Finish)
+
+
 def serialize_planner_metadata(value: str) -> schemas.PlannerImportMetadataModel | None:
     if not value:
         return None
@@ -72,32 +129,7 @@ def sync_project_metrics(db: Session, project: models.Project) -> None:
 
 
 def serialize_task(task: models.Task) -> schemas.TaskRead:
-    return schemas.TaskRead.model_validate(
-        {
-            "TaskUID": task.TaskUID,
-            "ProjectUID": task.ProjectUID,
-            "TaskName": task.TaskName,
-            "OutlineLevel": task.OutlineLevel,
-            "OutlineNumber": task.OutlineNumber,
-            "WBS": task.WBS,
-            "IsSummary": task.IsSummary,
-            "Predecessors": task.Predecessors,
-            "ResourceNames": task.ResourceNames,
-            "Start": task.Start,
-            "Finish": task.Finish,
-            "DurationDays": task.DurationDays,
-            "PercentComplete": task.PercentComplete,
-            "Status": task.Status,
-            "IsMilestone": task.IsMilestone,
-            "Notes": task.Notes,
-            "BucketName": task.BucketName,
-            "Labels": serialize_json_list(task.LabelsJson),
-            "ChecklistItems": serialize_json_list(task.ChecklistItemsJson),
-            "CompletedChecklistItems": serialize_json_list(task.CompletedChecklistItemsJson),
-            "ChecklistProgress": build_checklist_progress(task),
-            "IsOverdue": is_overdue(task.Finish, task.PercentComplete, task.Status),
-        }
-    )
+    return schemas.TaskRead.model_validate(build_task_read_payload(task))
 
 
 def serialize_project(project: models.Project) -> schemas.ProjectRead:
@@ -134,16 +166,6 @@ def get_projects(db: Session) -> list[schemas.ProjectRead]:
     return [serialize_project(project) for project in projects]
 
 
-def get_next_member_id(db: Session) -> int:
-    current_max = db.scalar(select(func.max(models.TeamMember.member_id)))
-    return (current_max or 0) + 1
-
-
-def get_next_manager_id(db: Session) -> int:
-    current_max = db.scalar(select(func.max(models.Manager.manager_id)))
-    return (current_max or 0) + 1
-
-
 def ensure_manager_exists(db: Session, display_name: str) -> None:
     normalized_name = display_name.strip()
     if not normalized_name:
@@ -153,20 +175,32 @@ def ensure_manager_exists(db: Session, display_name: str) -> None:
     if existing:
         return
 
-    db.add(models.Manager(manager_id=get_next_manager_id(db), display_name=normalized_name))
+    savepoint = db.begin_nested()
+    try:
+        db.add(models.Manager(display_name=normalized_name))
+        db.flush()
+        savepoint.commit()
+    except IntegrityError:
+        savepoint.rollback()
 
 
 def ensure_team_members_exist(db: Session, names: list[str]) -> None:
-    query = select(models.TeamMember.display_name).where(models.TeamMember.display_name.in_(names))
-    existing_names = {name for name in db.scalars(query).all()}
-    next_member_id = get_next_member_id(db)
     for name in names:
         normalized_name = name.strip()
-        if not normalized_name or normalized_name in existing_names:
+        if not normalized_name:
             continue
-        db.add(models.TeamMember(member_id=next_member_id, display_name=normalized_name))
-        existing_names.add(normalized_name)
-        next_member_id += 1
+
+        existing = db.scalar(select(models.TeamMember).where(models.TeamMember.display_name == normalized_name))
+        if existing:
+            continue
+
+        savepoint = db.begin_nested()
+        try:
+            db.add(models.TeamMember(display_name=normalized_name))
+            db.flush()
+            savepoint.commit()
+        except IntegrityError:
+            savepoint.rollback()
 
 
 def import_project(
@@ -319,16 +353,8 @@ def get_task(db: Session, task_id: int) -> models.Task | None:
 
 
 def create_task(db: Session, payload: schemas.TaskCreate) -> schemas.TaskRead:
-    task_data = payload.model_dump(exclude={"TaskUID"})
-    task_data["DurationDays"] = calculate_duration_days(payload.Start, payload.Finish)
-    task_data["LabelsJson"] = json.dumps(payload.Labels)
-    task_data["ChecklistItemsJson"] = json.dumps(payload.ChecklistItems)
-    task_data["CompletedChecklistItemsJson"] = json.dumps(payload.CompletedChecklistItems)
-    task_data.pop("Labels", None)
-    task_data.pop("ChecklistItems", None)
-    task_data.pop("CompletedChecklistItems", None)
-    task_data.pop("ChecklistProgress", None)
-    task = models.Task(**task_data)
+    task = models.Task(ProjectUID=payload.ProjectUID, TaskName=payload.TaskName)
+    apply_task_payload(task, payload)
     db.add(task)
     db.flush()
     project = get_project(db, task.ProjectUID)
@@ -342,17 +368,7 @@ def create_task(db: Session, payload: schemas.TaskCreate) -> schemas.TaskRead:
 
 def update_task(db: Session, task: models.Task, payload: schemas.TaskUpdate) -> schemas.TaskRead:
     previous_project_uid = task.ProjectUID
-    payload_data = payload.model_dump()
-    payload_data["LabelsJson"] = json.dumps(payload.Labels)
-    payload_data["ChecklistItemsJson"] = json.dumps(payload.ChecklistItems)
-    payload_data["CompletedChecklistItemsJson"] = json.dumps(payload.CompletedChecklistItems)
-    payload_data.pop("Labels", None)
-    payload_data.pop("ChecklistItems", None)
-    payload_data.pop("CompletedChecklistItems", None)
-    payload_data.pop("ChecklistProgress", None)
-    for key, value in payload_data.items():
-        setattr(task, key, value)
-    task.DurationDays = calculate_duration_days(task.Start, task.Finish)
+    apply_task_payload(task, payload)
     db.flush()
 
     current_project = get_project(db, task.ProjectUID)
@@ -388,9 +404,17 @@ def delete_task(db: Session, task: models.Task) -> None:
 
 
 def import_planner_project(
-    db: Session, payload: schemas.PlannerImportRequest, *, correlation_id: str | None = None
+    db: Session,
+    payload: schemas.PlannerImportRequest,
+    *,
+    imported_by: str,
+    project_manager: str,
+    correlation_id: str | None = None,
 ) -> schemas.ProjectRead:
-    ensure_manager_exists(db, payload.ProjectManager)
+    normalized_imported_by = imported_by.strip() or "Unknown"
+    normalized_project_manager = project_manager.strip() or normalized_imported_by
+
+    ensure_manager_exists(db, normalized_project_manager)
 
     team_member_names = sorted(
         {
@@ -405,7 +429,7 @@ def import_planner_project(
 
     project = models.Project(
         ProjectName=payload.ProjectName,
-        ProjectManager=payload.ProjectManager,
+        ProjectManager=normalized_project_manager,
         CreatedDate=date.today(),
         CalendarName="Planner",
         Start=payload.Start,
@@ -440,9 +464,9 @@ def import_planner_project(
                 IsMilestone=False,
                 Notes=task.Notes,
                 BucketName=task.BucketName,
-                LabelsJson=json.dumps(task.Labels),
-                ChecklistItemsJson=json.dumps(task.ChecklistItems),
-                CompletedChecklistItemsJson=json.dumps(task.CompletedChecklistItems),
+                LabelsJson=json_list(task.Labels),
+                ChecklistItemsJson=json_list(task.ChecklistItems),
+                CompletedChecklistItemsJson=json_list(task.CompletedChecklistItems),
             )
         )
 
@@ -459,7 +483,7 @@ def import_planner_project(
             db,
             correlation_id=correlation_id or "",
             source_file_name=payload.SourceFileName,
-            imported_by=payload.ImportedBy,
+            imported_by=normalized_imported_by,
             status="Succeeded",
             project_uid=serialized_project.ProjectUID,
             project_name=serialized_project.ProjectName,
@@ -473,7 +497,7 @@ def import_planner_project(
                 "correlationId": correlation_id or "",
                 "projectUID": serialized_project.ProjectUID,
                 "sourceFileName": payload.SourceFileName,
-                "importedBy": payload.ImportedBy,
+                "importedBy": normalized_imported_by,
             },
         )
     return serialized_project

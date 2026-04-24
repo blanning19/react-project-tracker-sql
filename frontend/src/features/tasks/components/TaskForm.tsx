@@ -1,8 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Button, Card, Col, Form, Row } from 'react-bootstrap';
 import { apiFetch, isAbortError } from '../../../shared/api/http';
+import { STATUS_OPTIONS } from '../../../shared/constants/projectUi';
 import { ProjectRecord, TaskPayload, TaskRecord, TeamMemberRecord } from '../../../shared/types/models';
 import { parseAssigneeNames } from '../../../shared/utils/assignees';
+import { calculateDurationDays } from '../../../shared/utils/projectMetrics';
 
 interface TaskFormProps {
     task?: TaskRecord | null;
@@ -65,14 +67,6 @@ function toEditableTask(task: TaskRecord): TaskPayload {
         CompletedChecklistItems: task.CompletedChecklistItems,
         ChecklistProgress: task.ChecklistProgress,
     };
-}
-
-function calculateDurationDays(start: string, finish: string): number {
-    const startDate = new Date(`${start}T00:00:00`);
-    const finishDate = new Date(`${finish}T00:00:00`);
-    const millisecondsPerDay = 1000 * 60 * 60 * 24;
-    const diffInDays = Math.round((finishDate.getTime() - startDate.getTime()) / millisecondsPerDay);
-    return Math.max(1, diffInDays);
 }
 
 export function TaskForm({
@@ -273,12 +267,9 @@ export function TaskForm({
                                     onChange={(event) => setFormState({ ...formState, Status: event.target.value })}
                                     disabled={readOnly}
                                 >
-                                    <option>Not Started</option>
-                                    <option>On Track</option>
-                                    <option>In Progress</option>
-                                    <option>At Risk</option>
-                                    <option>Blocked</option>
-                                    <option>Completed</option>
+                                    {STATUS_OPTIONS.map((status) => (
+                                        <option key={status}>{status}</option>
+                                    ))}
                                 </Form.Select>
                             </Form.Group>
                         </Col>

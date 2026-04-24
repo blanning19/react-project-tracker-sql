@@ -1,8 +1,10 @@
 import { Badge, Button, Card, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { OVERDUE_LABEL } from '../../../shared/constants/projectUi';
 import { SortDirection, ProjectRecord } from '../../../shared/types/models';
-import { getProjectTypeLabel, isPlannerProject } from '../../../shared/utils/projectType';
 import { formatDate } from '../../../shared/utils/date';
+import { countOpenTasks } from '../../../shared/utils/projectMetrics';
+import { getProjectTypeLabel, isPlannerProject } from '../../../shared/utils/projectType';
 import { getStatusClass } from '../../../shared/utils/status';
 
 export type HomeProjectSortField = 'ProjectName' | 'ProjectManager' | 'CreatedDate' | 'Status' | 'Finish' | 'OpenTasks';
@@ -84,16 +86,11 @@ export function ProjectSummaryTable({
                                     <td>
                                         <div className="d-flex align-items-center gap-2 flex-wrap">
                                             <Badge bg={getStatusClass(project.Status)}>{project.Status}</Badge>
-                                            {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                            {project.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                         </div>
                                     </td>
                                     <td>{formatDate(project.Finish)}</td>
-                                    <td>
-                                        {
-                                            project.tasks.filter((task) => task.Status.toLowerCase() !== 'completed')
-                                                .length
-                                        }
-                                    </td>
+                                    <td>{countOpenTasks(project.tasks)}</td>
                                     {actionLabel ? (
                                         <td className="text-end">
                                             {actionHref ? (

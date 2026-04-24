@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Row, Spinner, Table } from 'react-bootstrap';
 import { ProjectForm } from '../../projects/components/ProjectForm';
 import { TaskForm } from '../../tasks/components/TaskForm';
 import { SettingsPanel } from '../../settings/components/SettingsPanel';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { apiFetch } from '../../../shared/api/http';
+import {
+    OVERDUE_LABEL,
+    PROJECT_SOURCE_MANUAL_LABEL,
+} from '../../../shared/constants/projectUi';
 import { ProjectPayload, ProjectRecord, TaskPayload, TaskRecord } from '../../../shared/types/models';
 import { formatDate } from '../../../shared/utils/date';
 import { getStatusClass } from '../../../shared/utils/status';
+import { DashboardSortControls } from './DashboardSortControls';
 import { LiveClock } from './LiveClock';
 import { OpenProjectsTicker } from './OpenProjectsTicker';
-
-const sortFieldOptions: Array<keyof ProjectRecord> = ['ProjectName', 'Finish', 'Status', 'PercentComplete', 'Priority'];
 
 export function DashboardPage() {
     const { preferences, setTheme, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
@@ -213,41 +216,11 @@ export function DashboardPage() {
                                 <p className="text-uppercase small text-body-secondary mb-1">Dashboard Grid</p>
                                 <h2 className="h5 mb-0">Projects with associated subtasks</h2>
                             </div>
-                            <div className="d-flex flex-column flex-sm-row gap-3 align-items-sm-center">
-                                <Form.Group>
-                                    <Form.Label className="small text-body-secondary mb-1">Sort field</Form.Label>
-                                    <Form.Select
-                                        value={preferences?.dashboardSortField ?? 'Finish'}
-                                        onChange={(event) =>
-                                            void setDashboardSort(
-                                                event.target.value as keyof ProjectRecord,
-                                                preferences?.dashboardSortDirection ?? 'asc',
-                                            )
-                                        }
-                                    >
-                                        {sortFieldOptions.map((field) => (
-                                            <option key={field} value={field}>
-                                                {field}
-                                            </option>
-                                        ))}
-                                    </Form.Select>
-                                </Form.Group>
-                                <Form.Group>
-                                    <Form.Label className="small text-body-secondary mb-1">Direction</Form.Label>
-                                    <Form.Select
-                                        value={preferences?.dashboardSortDirection ?? 'asc'}
-                                        onChange={(event) =>
-                                            void setDashboardSort(
-                                                preferences?.dashboardSortField ?? 'Finish',
-                                                event.target.value as 'asc' | 'desc',
-                                            )
-                                        }
-                                    >
-                                        <option value="asc">Ascending</option>
-                                        <option value="desc">Descending</option>
-                                    </Form.Select>
-                                </Form.Group>
-                            </div>
+                            <DashboardSortControls
+                                sortField={preferences?.dashboardSortField ?? 'Finish'}
+                                sortDirection={preferences?.dashboardSortDirection ?? 'asc'}
+                                onChange={setDashboardSort}
+                            />
                         </div>
                     </Card.Body>
                 </Card>
@@ -265,13 +238,13 @@ export function DashboardPage() {
                                                 <Badge bg={getStatusClass(project.Status)}>
                                                     {project.Status}
                                                 </Badge>
-                                                {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                                {project.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                                 <Badge bg="secondary">{project.Priority}</Badge>
                                             </div>
                                             <h3 className="h4 mb-1">{project.ProjectName}</h3>
                                             <p className="mb-0 text-body-secondary">
-                                                ProjectUID {project.ProjectUID} � {project.ProjectManager} �{' '}
-                                                {project.SourceFileName || 'Manual entry'}
+                                                ProjectUID {project.ProjectUID} | {project.ProjectManager} |{' '}
+                                                {project.SourceFileName || PROJECT_SOURCE_MANUAL_LABEL}
                                             </p>
                                         </div>
                                         <div className="d-flex gap-2 flex-wrap align-self-start">
@@ -381,9 +354,7 @@ export function DashboardPage() {
                                                                 <Badge bg={getStatusClass(task.Status)}>
                                                                     {task.Status}
                                                                 </Badge>
-                                                                {task.IsOverdue ? (
-                                                                    <Badge bg="danger">Overdue</Badge>
-                                                                ) : null}
+                                                                {task.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                                             </div>
                                                         </td>
                                                         <td>{formatDate(task.Finish)}</td>

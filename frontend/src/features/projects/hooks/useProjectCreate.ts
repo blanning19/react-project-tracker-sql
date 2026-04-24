@@ -59,7 +59,7 @@ export function useProjectCreate(currentUserName: string): UseProjectCreateResul
         setIsSaving(true);
         setError(null);
         try {
-            return await apiFetch<ProjectRecord>('/projects/import-planner', {
+            return await apiFetch<ProjectRecord>(`/projects/import-planner?user_name=${encodeURIComponent(currentUserName)}`, {
                 method: 'POST',
                 body: JSON.stringify(payload),
             });

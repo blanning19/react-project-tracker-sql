@@ -4,9 +4,13 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import {
     buildPermissionContext,
     canEditProject,
-    canEditTask,
-    canViewTask,
+    getTaskAccess,
 } from '../../../shared/permissions/workspacePermissions';
+import {
+    BACK_TO_MY_DASHBOARD_LABEL,
+    OVERDUE_LABEL,
+    PROJECT_SOURCE_MANUAL_LABEL,
+} from '../../../shared/constants/projectUi';
 import { getProjectTypeLabel, isPlannerProject, projectHasBoardBuckets } from '../../../shared/utils/projectType';
 import { getStatusClass } from '../../../shared/utils/status';
 import { useProjectData } from '../../dashboard/hooks/useProjectData';
@@ -62,11 +66,12 @@ export function ProjectDetailPage() {
     const taskLookup = useMemo(() => buildTaskLookup(visibleTasks), [visibleTasks]);
     // Task edit access mirrors the dashboard rules: project owners can edit every
     // task, while assignees can edit only tasks explicitly assigned to them.
-    const canEditSelectedTask = editingTask && project ? canEditTask(editingTask, project, permissionContext) : false;
-    const canViewSelectedTask = editingTask && project ? canViewTask(editingTask, project, permissionContext) : false;
+    const selectedTaskAccess = editingTask && project ? getTaskAccess(editingTask, project, permissionContext) : null;
+    const canEditSelectedTask = selectedTaskAccess?.canEdit ?? false;
+    const canViewSelectedTask = selectedTaskAccess?.canView ?? false;
     const isTaskOpen = Boolean(editingTask);
     const backPath = origin === 'home' ? '/' : '/my-dashboard';
-    const backLabel = origin === 'home' ? 'Back to Home' : 'Back to My Dashboard';
+    const backLabel = origin === 'home' ? 'Back to Home' : BACK_TO_MY_DASHBOARD_LABEL;
     const flashMessage =
         typeof location.state === 'object' && location.state && 'flashMessage' in location.state
             ? String(location.state.flashMessage)
@@ -132,7 +137,7 @@ export function ProjectDetailPage() {
             return;
         }
 
-        const canEditMatchedTask = canEditTask(matchedTask, project, permissionContext);
+        const canEditMatchedTask = getTaskAccess(matchedTask, project, permissionContext).canEdit;
         if (!canEditMatchedTask || editingTask?.TaskUID === matchedTask.TaskUID) {
             return;
         }
@@ -178,7 +183,7 @@ export function ProjectDetailPage() {
                                 <h1 className="display-6 fw-semibold mb-2">{project.ProjectName}</h1>
                                 <p className="mb-2 text-body-secondary">
                                     ProjectUID {project.ProjectUID} | Managed by {project.ProjectManager} | Source{' '}
-                                    {project.SourceFileName || 'Manual entry'}
+                                    {project.SourceFileName || PROJECT_SOURCE_MANUAL_LABEL}
                                 </p>
                                 <div className="d-flex align-items-center gap-2 flex-wrap">
                                     <Badge bg={modeSummary.badge}>{modeSummary.label}</Badge>
@@ -186,7 +191,7 @@ export function ProjectDetailPage() {
                                     <Badge bg={getStatusClass(project.Status)}>
                                         {project.Status}
                                     </Badge>
-                                    {project.IsOverdue ? <Badge bg="danger">Overdue</Badge> : null}
+                                    {project.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                     <Badge bg="secondary">{project.Priority}</Badge>
                                 </div>
                             </div>
