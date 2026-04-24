@@ -427,6 +427,7 @@ Frontend version note:
 - frontend builds now generate `frontend/src/shared/config/version.ts` from git metadata before `dev`, `build`, `lint`, `typecheck`, and `test`
 - if a git tag is reachable from `HEAD`, that tag is used as the displayed frontend version
 - if no tag is available, the app falls back to `dev-<short-commit>`
+- changing branches or creating a tag does not rewrite `version.ts` immediately by itself; the file updates the next time one of those hooked commands runs
 - run `npm --prefix frontend run version:generate` if you want to refresh the generated file manually
 
 ### What These Commands Do
@@ -569,7 +570,7 @@ What these commands tell you:
 Tagging note:
 
 - create the tag on the commit you actually want to release
-- if you create the tag after a build has already been produced, rerun the relevant build or startup command so generated/frontend metadata picks up the new tag
+- if you create the tag after a build has already been produced, rerun `npm run frontend:dev`, `npm run frontend:build`, or `npm --prefix frontend run version:generate` so generated frontend metadata picks up the new tag
 - this repo currently expects plain numeric tags like `0.3.0`, not `v0.3.0`
 
 ## Testing Conventions

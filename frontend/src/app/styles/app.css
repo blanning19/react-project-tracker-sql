@@ -137,6 +137,16 @@ body {
     border: 1px solid var(--app-border);
 }
 
+.about-release-card {
+    background: var(--app-panel-solid);
+    border-color: color-mix(in srgb, var(--app-accent) 18%, var(--app-border));
+}
+
+.about-runtime-card {
+    background: color-mix(in srgb, var(--app-panel-solid) 92%, var(--app-accent) 8%);
+    border-color: color-mix(in srgb, var(--app-accent) 12%, var(--app-border));
+}
+
 .hero-panel {
     background-image: var(--hero-bg);
 }

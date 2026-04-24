@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Alert, Badge, Card, Col, Container, Row, Spinner, Tab, Tabs } from 'react-bootstrap';
+import { useEffect, useMemo, useState } from 'react';
+import { Badge, Card, Col, Container, Row, Spinner, Tab, Tabs } from 'react-bootstrap';
 import { apiFetch, isAbortError } from '../../../shared/api/http';
 import { APP_BUILD_INFO, APP_VERSION } from '../../../shared/config/version';
 import { EnvironmentSummaryRecord } from '../../../shared/types/models';
@@ -7,10 +7,24 @@ import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { SettingsPanel } from './SettingsPanel';
 import { useThemeSettings } from '../theme/ThemeProvider';
 
+function formatBuildDate(value: string) {
+    const parsedValue = Date.parse(value);
+    if (Number.isNaN(parsedValue)) {
+        return value;
+    }
+
+    return new Date(parsedValue).toLocaleString();
+}
+
 export function SettingsPage() {
     const { isLoading } = useThemeSettings();
     const { currentUserName, userAccess, isLoading: isCurrentUserLoading } = useCurrentUser();
     const [environmentSummary, setEnvironmentSummary] = useState<EnvironmentSummaryRecord | null>(null);
+    const releaseVersion = useMemo(() => environmentSummary?.appVersion ?? APP_VERSION, [environmentSummary]);
+    const isVersionAligned = useMemo(
+        () => !environmentSummary || environmentSummary.appVersion === APP_VERSION,
+        [environmentSummary],
+    );
 
     useEffect(() => {
         if (isCurrentUserLoading) {
@@ -126,48 +140,61 @@ export function SettingsPage() {
                                     <div className="d-flex justify-content-between align-items-start mb-3">
                                         <div>
                                             <p className="text-uppercase small text-body-secondary mb-1">About</p>
-                                            <h2 className="h5 mb-0">Workspace runtime details</h2>
+                                            <h2 className="h5 mb-0">Workspace release and runtime details</h2>
                                         </div>
-                                        <Badge bg="secondary">Local app</Badge>
+                                        <Badge bg={isVersionAligned ? 'success' : 'warning'}>
+                                            {isVersionAligned ? 'Version aligned' : 'Version check needed'}
+                                        </Badge>
                                     </div>
 
                                     <Row className="g-3">
-                                        <Col md={6}>
-                                            <div className="border rounded-3 p-3 h-100">
-                                                <div className="small text-body-secondary mb-1">Application</div>
-                                                <div className="fw-semibold">Project Tracker Workspace</div>
-                                            </div>
-                                        </Col>
-                                        <Col md={6}>
-                                            <div className="border rounded-3 p-3 h-100">
-                                                <div className="small text-body-secondary mb-1">Frontend Version</div>
-                                                <div className="fw-semibold">{APP_VERSION}</div>
-                                                <div className="small text-body-secondary mt-1">
-                                                    Branch: {APP_BUILD_INFO.branch} | Commit: {APP_BUILD_INFO.commitHash}
+                                        <Col xl={7}>
+                                            <div className="border rounded-4 p-4 h-100 about-release-card">
+                                                <div className="small text-uppercase text-body-secondary mb-2">
+                                                    Release
                                                 </div>
+                                                <h3 className="h4 mb-2">Project Tracker Workspace</h3>
+                                                <div className="display-6 fw-semibold mb-2">{releaseVersion}</div>
+                                                <p className="mb-0 text-body-secondary">
+                                                    This is the primary application version for the workspace. It comes
+                                                    from the current repo tag when one is available, otherwise it falls
+                                                    back to a development commit identifier.
+                                                </p>
                                             </div>
                                         </Col>
-                                        <Col md={6}>
-                                            <div className="border rounded-3 p-3 h-100">
-                                                <div className="small text-body-secondary mb-1">Backend API Version</div>
-                                                <div className="fw-semibold">
-                                                    {environmentSummary?.appVersion ?? 'Not available for this account'}
+                                        <Col xl={5}>
+                                            <div className="border rounded-4 p-4 h-100 about-runtime-card">
+                                                <div className="small text-uppercase text-body-secondary mb-2">
+                                                    Runtime
                                                 </div>
-                                            </div>
-                                        </Col>
-                                        <Col md={6}>
-                                            <div className="border rounded-3 p-3 h-100">
-                                                <div className="small text-body-secondary mb-1">Build Timestamp</div>
-                                                <div className="fw-semibold">{APP_BUILD_INFO.buildDate}</div>
+                                                <div className="d-grid gap-3">
+                                                    <div>
+                                                        <div className="small text-body-secondary mb-1">
+                                                            Frontend Build
+                                                        </div>
+                                                        <div className="fw-semibold">{APP_VERSION}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="small text-body-secondary mb-1">
+                                                            Backend API
+                                                        </div>
+                                                        <div className="fw-semibold">
+                                                            {environmentSummary?.appVersion ??
+                                                                'Not available for this account'}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="small text-body-secondary mb-1">
+                                                            Source Of Truth
+                                                        </div>
+                                                        <div className="fw-semibold">
+                                                            Git tag or `dev-&lt;commit&gt;`
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </Col>
                                     </Row>
-
-                                    <Alert variant="secondary" className="mt-3 mb-0">
-                                        Theme preferences stay in the settings flow today. As we bring in more
-                                        Ontology-backed patterns, this page can keep the same layout while the data
-                                        source changes under the hood.
-                                    </Alert>
                                 </Card.Body>
                             </Card>
                         </Tab>
