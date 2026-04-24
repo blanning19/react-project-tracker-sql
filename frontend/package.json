@@ -4,6 +4,11 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
+        "predev": "npm run version:generate",
+        "prebuild": "npm run version:generate",
+        "prelint": "npm run version:generate",
+        "pretypecheck": "npm run version:generate",
+        "pretest": "npm run version:generate",
         "dev": "vite",
         "build": "vite build",
         "lint": "eslint . --max-warnings 0",
@@ -13,7 +18,8 @@
         "test:watch": "vitest",
         "test:e2e": "playwright test",
         "format": "prettier --write .",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "version:generate": "node ../scripts/generate-frontend-version.cjs"
     },
     "dependencies": {
         "@dnd-kit/core": "^6.3.1",

@@ -24,7 +24,7 @@ const sampleProject: ProjectRecord = {
         {
             TaskUID: 5001,
             ProjectUID: 1001,
-            TaskName: 'Design review',
+            TaskName: 'Launch milestone',
             OutlineLevel: 1,
             OutlineNumber: '1',
             WBS: '1',
@@ -34,9 +34,9 @@ const sampleProject: ProjectRecord = {
             Start: '2026-03-02',
             Finish: '2026-03-05',
             DurationDays: 3,
-            PercentComplete: 50,
-            Status: 'In Progress',
-            IsMilestone: false,
+            PercentComplete: 100,
+            Status: 'Completed',
+            IsMilestone: true,
             IsOverdue: false,
             Notes: '',
             BucketName: '',
@@ -74,6 +74,10 @@ describe('ProjectSummaryTable', () => {
 
         expect(screen.getByText('Website refresh')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Open Project' })).toHaveAttribute('href', '/projects/1001');
+        expect(screen.getByText('Manual')).toBeInTheDocument();
+        expect(screen.getByText('1/1')).toBeInTheDocument();
+        expect(screen.getByText('100% complete')).toBeInTheDocument();
+        expect(screen.getByText('40%')).toBeInTheDocument();
 
         await user.click(screen.getByRole('button', { name: 'Project' }));
         expect(onSort).toHaveBeenCalledWith('ProjectName');

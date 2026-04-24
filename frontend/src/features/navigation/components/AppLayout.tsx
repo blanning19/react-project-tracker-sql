@@ -1,12 +1,16 @@
+import { useState } from 'react';
+import { Button, Modal } from 'react-bootstrap';
 import { NavLink, Outlet } from 'react-router-dom';
+import { DiagnosticsConsole } from '../../../shared/components/DiagnosticsConsole';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { useThemeSettings } from '../../settings/theme/ThemeProvider';
-import { buildPermissionContext, canViewAdmin } from '../../../shared/permissions/workspacePermissions';
+import { buildPermissionContext, canViewAdmin, canViewLogs } from '../../../shared/permissions/workspacePermissions';
 
 export function AppLayout() {
     const { preferences } = useThemeSettings();
     const { currentUserName, userAccess } = useCurrentUser();
     const permissionContext = buildPermissionContext(currentUserName, userAccess);
+    const [showDebugConsole, setShowDebugConsole] = useState(false);
 
     return (
         <div className="app-shell app-shell-grid">
@@ -41,6 +45,9 @@ export function AppLayout() {
                                 Admin
                             </NavLink>
                         ) : null}
+                        <Button variant="outline-secondary" className="mt-2" onClick={() => setShowDebugConsole(true)}>
+                            Debug Console
+                        </Button>
                     </nav>
                     <div className="mt-auto p-3 p-lg-4 border-top border-secondary-subtle">
                         <p className="mb-0 text-body-secondary small">Theme: {preferences?.theme ?? 'light'}</p>
@@ -50,6 +57,25 @@ export function AppLayout() {
             <main className="content-shell">
                 <Outlet />
             </main>
+            <Modal show={showDebugConsole} onHide={() => setShowDebugConsole(false)} size="xl" scrollable>
+                <Modal.Header closeButton>
+                    <Modal.Title>Debug Console</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <DiagnosticsConsole
+                        canViewLogs={canViewLogs(permissionContext)}
+                        currentUserName={currentUserName}
+                        defaultTab="frontend"
+                        title="Frontend and Backend logging tools"
+                        description="Use the same tabbed diagnostics workspace from Admin when you need more room to inspect frontend or backend activity."
+                    />
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowDebugConsole(false)}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     );
 }

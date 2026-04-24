@@ -95,6 +95,10 @@ vi.mock('../../../shared/permissions/workspacePermissions', () => ({
     canEditProject: vi.fn(() => true),
     canEditTask: vi.fn(() => true),
     canViewTask: vi.fn(() => true),
+    getTaskAccess: vi.fn(() => ({
+        canEdit: true,
+        canView: true,
+    })),
 }));
 
 vi.mock('./ProjectOverviewTab', () => ({
@@ -252,5 +256,81 @@ describe('ProjectDetailPage', () => {
         });
 
         expect(await screen.findByText('Moved "Draft copy" to Done.')).toBeInTheDocument();
+    });
+
+    it('shows the phases tab when summary phase data exists', async () => {
+        const phaseProject: ProjectRecord = {
+            ...plannerProject,
+            tasks: [
+                buildTask({
+                    TaskUID: 6000,
+                    TaskName: 'Planning Phase',
+                    IsSummary: true,
+                    OutlineLevel: 1,
+                    OutlineNumber: '1',
+                    WBS: '1',
+                    PercentComplete: 25,
+                    BucketName: '',
+                }),
+                buildTask({
+                    TaskUID: 6001,
+                    TaskName: 'Draft copy',
+                    OutlineLevel: 2,
+                    OutlineNumber: '1.1',
+                    WBS: '1.1',
+                    IsMilestone: false,
+                    BucketName: 'Backlog',
+                }),
+                buildTask({
+                    TaskUID: 6002,
+                    TaskName: 'Go live',
+                    OutlineLevel: 2,
+                    OutlineNumber: '1.2',
+                    WBS: '1.2',
+                    IsMilestone: true,
+                    PercentComplete: 0,
+                    BucketName: 'Done',
+                }),
+            ],
+        };
+
+        mockUseProjectData.mockReturnValue({
+            projects: [phaseProject],
+            selectedProjectId: phaseProject.ProjectUID,
+            setSelectedProjectId: mockSetSelectedProjectId,
+            editingTask: null,
+            setEditingTask: mockSetEditingTask,
+            editingProject: null,
+            setEditingProject: mockSetEditingProject,
+            isLoading: false,
+            error: null,
+            isSaving: false,
+            handleProjectSave: mockHandleProjectSave,
+            handleProjectImport: mockHandleProjectImport,
+            handleTaskSave: mockHandleTaskSave,
+            handleDeleteProject: mockHandleDeleteProject,
+            handleDeleteTask: mockHandleDeleteTask,
+        });
+
+        const user = userEvent.setup();
+
+        render(
+            <MemoryRouter
+                initialEntries={['/projects/1001?from=my-dashboard']}
+                future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            >
+                <Routes>
+                    <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Phases' }));
+
+        expect(await screen.findByText('Imported summary phases')).toBeInTheDocument();
+        expect(screen.getByText('Planning Phase')).toBeInTheDocument();
+        expect(screen.getByText('25% complete')).toBeInTheDocument();
+        expect(screen.getByText(/Tasks:/)).toBeInTheDocument();
+        expect(screen.getByText(/Milestones:/)).toBeInTheDocument();
     });
 });

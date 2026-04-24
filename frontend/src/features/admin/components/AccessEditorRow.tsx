@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { apiFetch } from '../../../shared/api/http';
 import { UserAccessPayload, UserAccessRecord } from '../../../shared/types/models';
+import { logger } from '../../../shared/utils/debug';
 
 interface AccessEditorRowProps {
     currentUserName: string;
@@ -38,6 +39,13 @@ export function AccessEditorRow({ currentUserName, userAccess, onSaved }: Access
     const handleSave = useCallback(async () => {
         setIsSaving(true);
         setSaveError(null);
+        logger.info('AccessEditorRow', 'Saving access changes', {
+            actingUser: currentUserName,
+            targetUser: userAccess.userName,
+            nextRole: formState.role,
+            canViewAdmin: formState.canViewAdmin,
+            canViewLogs: formState.canViewLogs,
+        });
         try {
             const saved = await apiFetch<UserAccessRecord>(
                 `/admin/access/${encodeURIComponent(userAccess.userName)}?user_name=${encodeURIComponent(currentUserName)}`,
@@ -46,8 +54,18 @@ export function AccessEditorRow({ currentUserName, userAccess, onSaved }: Access
                     body: JSON.stringify(formState),
                 },
             );
+            logger.success('AccessEditorRow', 'Access changes saved', {
+                actingUser: currentUserName,
+                targetUser: saved.userName,
+                role: saved.role,
+            });
             onSaved(saved);
         } catch (error) {
+            logger.error('AccessEditorRow', 'Failed to save access changes', {
+                actingUser: currentUserName,
+                targetUser: userAccess.userName,
+                error: error instanceof Error ? error.message : String(error),
+            });
             setSaveError(error instanceof Error ? error.message : 'Unable to save the updated visibility settings.');
         } finally {
             setIsSaving(false);

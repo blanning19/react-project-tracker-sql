@@ -19,9 +19,10 @@ import { useThemeSettings } from '../../settings/theme/ThemeProvider';
 import { TaskForm } from '../../tasks/components/TaskForm';
 import { ProjectBoardView } from './ProjectBoardView';
 import { ProjectOverviewTab } from './ProjectOverviewTab';
+import { ProjectPhasesTab } from './ProjectPhasesTab';
 import { ProjectTasksTab } from './ProjectTasksTab';
 import { ProjectTimelineTab } from './ProjectTimelineTab';
-import { buildTaskLookup } from './projectDetailUtils';
+import { buildPhaseSummaries, buildTaskLookup } from './projectDetailUtils';
 
 export function ProjectDetailPage() {
     const location = useLocation();
@@ -61,6 +62,7 @@ export function ProjectDetailPage() {
     const projectCanEdit = project ? canEditProject(project, permissionContext) : false;
     const visibleTasks = useMemo(() => project?.tasks ?? [], [project]);
     const showBoardTab = project ? isPlannerProject(project) && projectHasBoardBuckets(project) : false;
+    const phaseSummaries = useMemo(() => (project ? buildPhaseSummaries(project.tasks) : []), [project]);
     // Shared timeline/task helpers were extracted so the detail page can focus on
     // navigation, permissions, and deep-link restoration instead of rendering internals.
     const taskLookup = useMemo(() => buildTaskLookup(visibleTasks), [visibleTasks]);
@@ -252,6 +254,11 @@ export function ProjectDetailPage() {
                         <Nav.Item>
                             <Nav.Link eventKey="timeline">Timeline</Nav.Link>
                         </Nav.Item>
+                        {phaseSummaries.length > 0 ? (
+                            <Nav.Item>
+                                <Nav.Link eventKey="phases">Phases</Nav.Link>
+                            </Nav.Item>
+                        ) : null}
                         {showBoardTab ? (
                             <Nav.Item>
                                 <Nav.Link eventKey="board">Board</Nav.Link>
@@ -283,6 +290,8 @@ export function ProjectDetailPage() {
             ) : null}
 
             {activeTab === 'timeline' ? <ProjectTimelineTab project={project} /> : null}
+
+            {activeTab === 'phases' ? <ProjectPhasesTab project={project} /> : null}
 
             {activeTab === 'board' && showBoardTab ? (
                 <ProjectBoardView

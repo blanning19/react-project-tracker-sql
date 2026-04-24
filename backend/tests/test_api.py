@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from backend.project_tracker_api import crud
+from backend.project_tracker_api.versioning import get_backend_version
 
 
 def test_healthcheck_returns_ok(client):
@@ -645,7 +646,7 @@ def test_admin_environment_summary_returns_safe_runtime_details(client):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["appVersion"] == "0.1.0"
+    assert payload["appVersion"] == get_backend_version()
     assert payload["swaggerDocsUrl"].endswith("/docs")
     assert payload["openapiJsonUrl"].endswith("/openapi.json")
     assert payload["healthUrl"].endswith("/health")

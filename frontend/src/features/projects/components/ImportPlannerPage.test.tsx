@@ -146,6 +146,8 @@ describe('ImportPlannerPage', () => {
         expect(fileInput).not.toBeNull();
 
         await user.upload(fileInput as HTMLInputElement, workbookFile);
+        expect(await screen.findByText(/Selected file:/)).toBeInTheDocument();
+        expect(screen.getByText(/planner-export.xlsx/)).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'Preview Workbook' }));
 
         await waitFor(() => {
@@ -156,6 +158,7 @@ describe('ImportPlannerPage', () => {
         expect(screen.getByText('Backlog')).toBeInTheDocument();
         expect(screen.getByText('In Progress')).toBeInTheDocument();
         expect(screen.getByText('Workspace User')).toBeInTheDocument();
+        expect(screen.queryByText(/Select a workbook and preview it/)).not.toBeInTheDocument();
 
         await user.click(screen.getByRole('button', { name: 'Import Planner Project' }));
 

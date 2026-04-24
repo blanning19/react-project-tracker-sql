@@ -218,7 +218,69 @@ react-project-tracker-sql/
   README.md
 ```
 
+Helpful companion docs:
+
+- [Foundry ontology mapping](/c:/_Code/react-project-tracker-sql/docs/foundry-ontology-mapping.md)
+- [Foundry export prep](/c:/_Code/react-project-tracker-sql/docs/foundry-export-prep.md)
+- [Ontology merge log](/c:/_Code/react-project-tracker-sql/docs/ontology-merge-log.md)
+
 ## Local Setup
+
+### Quick Start Cheat Sheet
+
+When you just need to get the app running again from the repo root:
+
+```powershell
+npm run frontend:install
+npm run backend:venv
+Copy-Item backend/.env.example backend/.env
+npm run backend:seed
+npm run backend:dev
+```
+
+Open a second terminal in the same repo root and run:
+
+```powershell
+npm run frontend:dev
+```
+
+If the frontend starts but the browser still says the site cannot be reached, Vite may have bound to IPv6 loopback (`::1`) instead of `127.0.0.1`. In that case, restart it with:
+
+```powershell
+npm --prefix frontend run dev -- --host 127.0.0.1
+```
+
+Then open:
+
+- frontend: `http://127.0.0.1:5173` or the exact URL printed by Vite
+- backend API: `http://127.0.0.1:8000`
+- FastAPI docs: `http://127.0.0.1:8000/docs`
+
+If the backend fails on startup, the first thing to check is that `backend/.env` exists and that PostgreSQL is running with the database from `PROJECT_TRACKER_DATABASE_URL`.
+
+If you want to activate the backend virtual environment manually in PowerShell, use:
+
+```powershell
+.\backend\.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks the script, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\backend\.venv\Scripts\Activate.ps1
+```
+
+Then install backend dependencies with:
+
+```powershell
+npm run backend:install
+```
+
+Frontend `npm audit` note:
+
+- run `npm --prefix frontend audit` from the repo root, or `npm audit` from `frontend/`
+- do not run `npm audit fix --force` from the repo root because the lockfile lives in `frontend/package-lock.json`
 
 ### 1. Install Frontend Dependencies
 
@@ -237,6 +299,13 @@ npm run backend:venv
 Activate it in PowerShell:
 
 ```powershell
+.\backend\.venv\Scripts\Activate.ps1
+```
+
+If PowerShell blocks activation in the current shell:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
 .\backend\.venv\Scripts\Activate.ps1
 ```
 
@@ -307,6 +376,12 @@ npm run backend:dev
 npm run frontend:dev
 ```
 
+If Vite binds to IPv6 loopback and the browser cannot reach `127.0.0.1`, restart it with:
+
+```powershell
+npm --prefix frontend run dev -- --host 127.0.0.1
+```
+
 ## Common Commands
 
 From the repo root:
@@ -346,6 +421,13 @@ npm run format:check
 npm run test
 npm run test:e2e
 ```
+
+Frontend version note:
+
+- frontend builds now generate `frontend/src/shared/config/version.ts` from git metadata before `dev`, `build`, `lint`, `typecheck`, and `test`
+- if a git tag is reachable from `HEAD`, that tag is used as the displayed frontend version
+- if no tag is available, the app falls back to `dev-<short-commit>`
+- run `npm --prefix frontend run version:generate` if you want to refresh the generated file manually
 
 ### What These Commands Do
 
@@ -431,6 +513,64 @@ Additional hardening commands:
 
 - `npm run backend:audit` for Python dependency vulnerability scanning
 - `npm run backend:security` for Python security-focused static analysis
+
+## Commit And Tag Workflow
+
+For normal feature work:
+
+```powershell
+git status
+npm run check
+git add .
+git commit -m "feat: describe the change"
+```
+
+For a release-style checkpoint where the app version should come from a repo tag:
+
+```powershell
+git status
+npm run check
+git add .
+git commit -m "feat: describe the release change"
+git tag 0.3.0
+git show 0.3.0 --stat
+```
+
+Optional push commands:
+
+```powershell
+git push origin main
+git push origin 0.3.0
+```
+
+How versioning works:
+
+- this repo now treats the git tag as the primary application version for both frontend and backend
+- if `HEAD` has a reachable tag such as `0.3.0`, the app reports `0.3.0`
+- if no tag is reachable, the app falls back to `dev-<short-commit>`
+- frontend version metadata is generated automatically before `dev`, `build`, `lint`, `typecheck`, and `test`
+- backend version metadata is resolved from the same repo tags at runtime
+
+Helpful git version commands:
+
+```powershell
+git tag --sort=-creatordate
+git describe --tags --abbrev=0
+git log --decorate --oneline -n 10
+```
+
+What these commands tell you:
+
+- `git tag --sort=-creatordate` lists available tags with the newest first
+- `git describe --tags --abbrev=0` shows the latest reachable tag from the current commit
+- if `git describe --tags --abbrev=0` fails, the app will use the `dev-<short-commit>` fallback version
+- `git log --decorate --oneline -n 10` shows whether your current branch tip is sitting on a tag
+
+Tagging note:
+
+- create the tag on the commit you actually want to release
+- if you create the tag after a build has already been produced, rerun the relevant build or startup command so generated/frontend metadata picks up the new tag
+- this repo currently expects plain numeric tags like `0.3.0`, not `v0.3.0`
 
 ## Testing Conventions
 

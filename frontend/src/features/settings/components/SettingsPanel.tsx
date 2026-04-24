@@ -53,6 +53,12 @@ export function SettingsPanel() {
                             <strong>Direction:</strong> {preferences?.dashboardSortDirection ?? 'asc'}
                         </p>
                     </div>
+
+                    <p className="mb-0 text-body-secondary small">
+                        These preferences are currently saved through the app settings flow. If we move this screen to
+                        Ontology-backed user preferences later, the UI here can stay mostly the same while the storage
+                        layer changes underneath it.
+                    </p>
                 </div>
             </Card.Body>
         </Card>

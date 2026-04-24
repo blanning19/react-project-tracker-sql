@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from . import models, schemas
 from .config import get_settings
 from .persistence import commit_with_rollback
+from .versioning import get_backend_version
 
 
 def serialize_import_event(import_event: models.ImportEvent) -> schemas.ImportEventRead:
@@ -137,7 +138,7 @@ def get_environment_summary() -> schemas.EnvironmentSummaryRead:
     settings = get_settings()
     database_url = make_url(settings.database_url)
     return schemas.EnvironmentSummaryRead(
-        appVersion="0.1.0",
+        appVersion=get_backend_version(),
         adminUserName=settings.admin_user_name,
         logFilePath=settings.log_file_path,
         corsOrigins=settings.cors_origins,

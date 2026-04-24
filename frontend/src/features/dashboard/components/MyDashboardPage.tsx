@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Alert, Badge, Card, Col, Container, Row, Spinner, Table } from 'react-bootstrap';
+import { useMemo, useState } from 'react';
+import { Alert, Badge, Card, Col, Container, Form, ProgressBar, Row, Spinner, Table } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import {
     buildPermissionContext,
@@ -29,12 +29,14 @@ export function MyDashboardPage() {
     const { preferences, setDashboardSort, isLoading: isSettingsLoading } = useThemeSettings();
     const { currentUserName, userAccess, isLoading: isCurrentUserLoading } = useCurrentUser();
     const { projects, isLoading, error } = useProjectData(preferences);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
     const permissionContext = useMemo(
         () => buildPermissionContext(currentUserName, userAccess),
         [currentUserName, userAccess],
     );
 
-    const myProjects = useMemo(
+    const accessibleProjects = useMemo(
         () =>
             projects.filter((project) => {
                 const access = getProjectAccess(project, permissionContext);
@@ -43,6 +45,26 @@ export function MyDashboardPage() {
                 return ownsOpenProject || access.hasAssignedTask;
             }),
         [permissionContext, projects],
+    );
+
+    const statusOptions = useMemo(
+        () => ['All', ...Array.from(new Set(accessibleProjects.map((project) => project.Status))).sort((left, right) => left.localeCompare(right))],
+        [accessibleProjects],
+    );
+
+    const myProjects = useMemo(
+        () =>
+            accessibleProjects.filter((project) => {
+                const filterValue = searchTerm.trim().toLowerCase();
+                const matchesSearch =
+                    filterValue.length === 0 ||
+                    project.ProjectName.toLowerCase().includes(filterValue) ||
+                    project.ProjectManager.toLowerCase().includes(filterValue) ||
+                    project.Status.toLowerCase().includes(filterValue);
+                const matchesStatus = statusFilter === 'All' || project.Status === statusFilter;
+                return matchesSearch && matchesStatus;
+            }),
+        [accessibleProjects, searchTerm, statusFilter],
     );
 
     const myOpenTasks = useMemo<MyTaskRow[]>(
@@ -95,25 +117,47 @@ export function MyDashboardPage() {
 
             <Card className="shadow-sm border-0 dashboard-panel mb-4">
                 <Card.Body>
-                    <div className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
-                        <div>
-                            <p className="text-uppercase small text-body-secondary mb-1">My Projects</p>
-                            <h2 className="h5 mb-0">Projects with active ownership or assigned work</h2>
-                        </div>
+                        <div className="d-flex flex-column flex-lg-row gap-3 justify-content-between align-items-lg-center">
+                            <div>
+                                <p className="text-uppercase small text-body-secondary mb-1">My Projects</p>
+                                <h2 className="h5 mb-0">Projects with active ownership or assigned work</h2>
+                            </div>
                         <DashboardSortControls
                             sortField={preferences?.dashboardSortField ?? 'Finish'}
                             sortDirection={preferences?.dashboardSortDirection ?? 'asc'}
                             onChange={setDashboardSort}
-                        />
-                    </div>
+                            />
+                        </div>
+
+                    <Row className="g-3 mt-1">
+                        <Col md={8}>
+                            <Form.Control
+                                type="text"
+                                value={searchTerm}
+                                placeholder="Search by project name, manager, or status"
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                            />
+                        </Col>
+                        <Col md={4}>
+                            <Form.Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                                {statusOptions.map((statusOption) => (
+                                    <option key={statusOption} value={statusOption}>
+                                        {statusOption}
+                                    </option>
+                                ))}
+                            </Form.Select>
+                        </Col>
+                    </Row>
 
                     <div className="table-responsive mt-4">
                         <Table hover className="align-middle mb-0 task-table">
                             <thead>
                                 <tr>
                                     <th>Project</th>
+                                    <th>Type</th>
                                     <th>Manager</th>
                                     <th>Status</th>
+                                    <th>Progress</th>
                                     <th>Finish</th>
                                     <th>Priority</th>
                                     <th>My Open Tasks</th>
@@ -128,17 +172,30 @@ export function MyDashboardPage() {
                                             <small className="text-body-secondary">
                                                 ProjectUID {project.ProjectUID}
                                             </small>
-                                            <div className="mt-1">
-                                                <Badge bg={isPlannerProject(project) ? 'primary' : 'secondary'}>
-                                                    {getProjectTypeLabel(project)}
-                                                </Badge>
-                                            </div>
+                                        </td>
+                                        <td>
+                                            <Badge bg={isPlannerProject(project) ? 'primary' : 'secondary'}>
+                                                {getProjectTypeLabel(project)}
+                                            </Badge>
                                         </td>
                                         <td>{project.ProjectManager}</td>
                                         <td>
                                             <div className="d-flex align-items-center gap-2 flex-wrap">
                                                 <Badge bg={getStatusClass(project.Status)}>{project.Status}</Badge>
                                                 {project.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className="d-flex align-items-center gap-2" style={{ minWidth: '9rem' }}>
+                                                <ProgressBar
+                                                    now={project.PercentComplete}
+                                                    label={`${project.PercentComplete}%`}
+                                                    visuallyHidden={project.PercentComplete < 35}
+                                                    style={{ minWidth: '7rem' }}
+                                                />
+                                                {project.PercentComplete < 35 ? (
+                                                    <small className="text-body-secondary">{project.PercentComplete}%</small>
+                                                ) : null}
                                             </div>
                                         </td>
                                         <td>{formatDate(project.Finish)}</td>
@@ -156,7 +213,7 @@ export function MyDashboardPage() {
                                 ))}
                                 {myProjects.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="text-center text-body-secondary py-4">
+                                        <td colSpan={9} className="text-center text-body-secondary py-4">
                                             No active projects found for you.
                                         </td>
                                     </tr>
@@ -198,6 +255,13 @@ export function MyDashboardPage() {
                                         <td>
                                             <div className="fw-semibold">{task.TaskName}</div>
                                             <small className="text-body-secondary">TaskUID {task.TaskUID}</small>
+                                            {task.IsMilestone ? (
+                                                <div className="mt-1">
+                                                    <Badge bg="warning" text="dark">
+                                                        Milestone
+                                                    </Badge>
+                                                </div>
+                                            ) : null}
                                         </td>
                                         <td>{project.ProjectName}</td>
                                         <td>
@@ -207,7 +271,19 @@ export function MyDashboardPage() {
                                             </div>
                                         </td>
                                         <td>{formatDate(task.Finish)}</td>
-                                        <td>{task.PercentComplete}%</td>
+                                        <td>
+                                            <div className="d-flex align-items-center gap-2" style={{ minWidth: '9rem' }}>
+                                                <ProgressBar
+                                                    now={task.PercentComplete}
+                                                    label={`${task.PercentComplete}%`}
+                                                    visuallyHidden={task.PercentComplete < 35}
+                                                    style={{ minWidth: '7rem' }}
+                                                />
+                                                {task.PercentComplete < 35 ? (
+                                                    <small className="text-body-secondary">{task.PercentComplete}%</small>
+                                                ) : null}
+                                            </div>
+                                        </td>
                                         <td>{isOwner ? 'Owner' : 'Assigned'}</td>
                                         <td className="text-end">
                                             <Link

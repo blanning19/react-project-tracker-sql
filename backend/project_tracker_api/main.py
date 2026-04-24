@@ -12,8 +12,10 @@ from .config import get_settings
 from .logging_config import configure_logging
 from .routes import admin, directory, projects, system, tasks
 from .routes import settings as settings_routes
+from .versioning import get_backend_version
 
 settings = get_settings()
+app_version = get_backend_version()
 configure_logging(settings.log_level, settings.log_file_path)
 logger = logging.getLogger(__name__)
 # Tests and existing imports still expect get_db to be available from main.py,
@@ -31,7 +33,7 @@ def create_app(*, include_startup_db_init: bool = True) -> FastAPI:
 
     app = FastAPI(
         title="Project Tracker API",
-        version="0.1.0",
+        version=app_version,
         description=(
             "REST API for the Project Tracker workspace. FastAPI automatically publishes interactive "
             "OpenAPI documentation at /docs plus a machine-readable schema at /openapi.json."

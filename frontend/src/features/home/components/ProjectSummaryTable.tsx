@@ -1,4 +1,4 @@
-import { Badge, Button, Card, Table } from 'react-bootstrap';
+import { Badge, Button, Card, OverlayTrigger, ProgressBar, Table, Tooltip } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { OVERDUE_LABEL } from '../../../shared/constants/projectUi';
 import { SortDirection, ProjectRecord } from '../../../shared/types/models';
@@ -35,14 +35,47 @@ export function ProjectSummaryTable({
     function renderSortLabel(label: string, field: HomeProjectSortField) {
         const indicator = sortField === field ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : '';
         return (
-            <Button
-                variant="link"
-                className="p-0 text-decoration-none fw-semibold text-body"
-                onClick={() => onSort(field)}
-            >
+            <Button variant="link" className="p-0 text-decoration-none fw-semibold text-body" onClick={() => onSort(field)}>
                 {label}
                 {indicator}
             </Button>
+        );
+    }
+
+    function renderProjectTypeBadge(project: ProjectRecord) {
+        const isPlanner = isPlannerProject(project);
+        const label = getProjectTypeLabel(project);
+        const tooltip = isPlanner
+            ? 'Planner-backed project with board-style task organization.'
+            : project.SourceFileName
+              ? 'Imported project file tracked in the current workspace.'
+              : 'Project created directly in the workspace.';
+
+        return (
+            <OverlayTrigger placement="top" overlay={<Tooltip>{tooltip}</Tooltip>}>
+                <Badge bg={isPlanner ? 'primary' : 'secondary'} style={{ cursor: 'help' }}>
+                    {label}
+                </Badge>
+            </OverlayTrigger>
+        );
+    }
+
+    function renderMilestoneProgress(project: ProjectRecord) {
+        const milestones = project.tasks.filter((task) => task.IsMilestone);
+        const completedMilestones = milestones.filter((task) => task.PercentComplete === 100).length;
+
+        if (milestones.length === 0) {
+            return <span className="text-body-secondary small">No milestones</span>;
+        }
+
+        const percent = Math.round((completedMilestones / milestones.length) * 100);
+        return (
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+                <Badge bg={completedMilestones === milestones.length ? 'success' : 'secondary'}>
+                    {completedMilestones}/{milestones.length}
+                </Badge>
+                <small className="text-body-secondary">{percent}% complete</small>
+            </div>
         );
     }
 
@@ -61,9 +94,12 @@ export function ProjectSummaryTable({
                         <thead>
                             <tr>
                                 <th>{renderSortLabel('Project', 'ProjectName')}</th>
+                                <th>Type</th>
                                 <th>{renderSortLabel('Manager', 'ProjectManager')}</th>
                                 <th>{renderSortLabel('Create Date', 'CreatedDate')}</th>
                                 <th>{renderSortLabel('Status', 'Status')}</th>
+                                <th>Milestones</th>
+                                <th>% Complete</th>
                                 <th>{renderSortLabel('Finish', 'Finish')}</th>
                                 <th>{renderSortLabel('Open Tasks', 'OpenTasks')}</th>
                                 {actionLabel ? <th className="text-end" /> : null}
@@ -75,12 +111,8 @@ export function ProjectSummaryTable({
                                     <td>
                                         <div className="fw-semibold">{project.ProjectName}</div>
                                         <small className="text-body-secondary">ProjectUID {project.ProjectUID}</small>
-                                        <div className="mt-1">
-                                            <Badge bg={isPlannerProject(project) ? 'primary' : 'secondary'}>
-                                                {getProjectTypeLabel(project)}
-                                            </Badge>
-                                        </div>
                                     </td>
+                                    <td>{renderProjectTypeBadge(project)}</td>
                                     <td>{project.ProjectManager}</td>
                                     <td>{formatDate(project.CreatedDate)}</td>
                                     <td>
@@ -89,24 +121,30 @@ export function ProjectSummaryTable({
                                             {project.IsOverdue ? <Badge bg="danger">{OVERDUE_LABEL}</Badge> : null}
                                         </div>
                                     </td>
+                                    <td>{renderMilestoneProgress(project)}</td>
+                                    <td>
+                                        <div className="d-flex align-items-center gap-2">
+                                            <ProgressBar
+                                                now={project.PercentComplete}
+                                                label={`${project.PercentComplete}%`}
+                                                visuallyHidden={project.PercentComplete < 35}
+                                                style={{ minWidth: '7rem' }}
+                                            />
+                                            {project.PercentComplete < 35 ? (
+                                                <small className="text-body-secondary">{project.PercentComplete}%</small>
+                                            ) : null}
+                                        </div>
+                                    </td>
                                     <td>{formatDate(project.Finish)}</td>
                                     <td>{countOpenTasks(project.tasks)}</td>
                                     {actionLabel ? (
                                         <td className="text-end">
                                             {actionHref ? (
-                                                <Link
-                                                    to={actionHref(project)}
-                                                    className="btn btn-outline-primary btn-sm"
-                                                    role="button"
-                                                >
+                                                <Link to={actionHref(project)} className="btn btn-outline-primary btn-sm" role="button">
                                                     {actionLabel}
                                                 </Link>
                                             ) : (
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline-primary"
-                                                    onClick={() => onAction?.(project)}
-                                                >
+                                                <Button size="sm" variant="outline-primary" onClick={() => onAction?.(project)}>
                                                     {actionLabel}
                                                 </Button>
                                             )}
@@ -116,7 +154,7 @@ export function ProjectSummaryTable({
                             ))}
                             {projects.length === 0 ? (
                                 <tr>
-                                    <td colSpan={actionLabel ? 7 : 6} className="text-center text-body-secondary py-4">
+                                    <td colSpan={actionLabel ? 10 : 9} className="text-center text-body-secondary py-4">
                                         No projects found.
                                     </td>
                                 </tr>

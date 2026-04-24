@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Badge, Card, Col, Container, Nav, Row, Spinner } from 'react-bootstrap';
+import { Alert, Badge, Button, Card, Col, Container, Nav, Row, Spinner } from 'react-bootstrap';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
 import { apiFetch } from '../../../shared/api/http';
 import { buildPermissionContext, canViewAdmin, canViewLogs } from '../../../shared/permissions/workspacePermissions';
 import { EnvironmentSummaryRecord, ImportEventRecord, UserAccessRecord } from '../../../shared/types/models';
+import { logger } from '../../../shared/utils/debug';
 import { AccessTab } from './AccessTab';
 import { AdminTabKey, ImportFilterRange } from './adminTypes';
 import { copyToClipboard, formatRoleLabel, isImportWithinRange } from './adminUtils';
@@ -33,9 +34,16 @@ export function AdminPage() {
     const loadAdminData = useCallback(async () => {
         setIsPageLoading(true);
         setLoadError(null);
+        logger.info('AdminPage', 'Loading admin dashboard data', {
+            currentUserName,
+            activeTab,
+        });
 
         try {
             if (!canViewAdmin(permissionContext)) {
+                logger.warn('AdminPage', 'Skipped admin data load because the current user cannot view admin data', {
+                    currentUserName,
+                });
                 setEnvironmentSummary(null);
                 setImportEvents([]);
                 setUserAccessList([]);
@@ -51,12 +59,21 @@ export function AdminPage() {
             setEnvironmentSummary(nextEnvironmentSummary);
             setImportEvents(nextImportEvents);
             setUserAccessList(nextUserAccessList);
+            logger.success('AdminPage', 'Admin dashboard data loaded', {
+                currentUserName,
+                importEventCount: nextImportEvents.length,
+                accessRecordCount: nextUserAccessList.length,
+            });
         } catch (error) {
+            logger.error('AdminPage', 'Failed to load admin dashboard data', {
+                currentUserName,
+                error: error instanceof Error ? error.message : String(error),
+            });
             setLoadError(error instanceof Error ? error.message : 'Unable to load the admin dashboard.');
         } finally {
             setIsPageLoading(false);
         }
-    }, [currentUserName, permissionContext]);
+    }, [activeTab, currentUserName, permissionContext]);
 
     useEffect(() => {
         if (isLoading) {
@@ -90,6 +107,12 @@ export function AdminPage() {
     }, [filteredFailureEvents, filteredImportEvents]);
 
     const handleAccessSaved = useCallback((nextRecord: UserAccessRecord) => {
+        logger.success('AdminPage', 'User access record saved', {
+            userName: nextRecord.userName,
+            role: nextRecord.role,
+            canViewAdmin: nextRecord.canViewAdmin,
+            canViewLogs: nextRecord.canViewLogs,
+        });
         setUserAccessList((previousList) =>
             previousList.map((record) => (record.userName === nextRecord.userName ? nextRecord : record)),
         );
@@ -98,22 +121,29 @@ export function AdminPage() {
     const handleCopyCorrelationId = useCallback(async (correlationId: string) => {
         try {
             await copyToClipboard(correlationId);
+            logger.success('AdminPage', 'Copied import correlation ID', { correlationId });
             setCopiedCorrelationId(correlationId);
             window.setTimeout(() => {
                 setCopiedCorrelationId((currentValue) => (currentValue === correlationId ? null : currentValue));
             }, 2000);
         } catch {
+            logger.error('AdminPage', 'Failed to copy import correlation ID', { correlationId });
             setCopiedCorrelationId(null);
         }
     }, []);
 
     const handleViewLogContext = useCallback((importEvent: ImportEventRecord) => {
+        logger.info('AdminPage', 'Opened related log context for import event', {
+            importEventId: importEvent.importEventId,
+            correlationId: importEvent.correlationId,
+        });
         setSelectedLogTimestamp(importEvent.createdAt);
         setSelectedLogCorrelationId(importEvent.correlationId || null);
         setActiveTab('logs');
     }, []);
 
     const handleResetLogSelection = useCallback(() => {
+        logger.info('AdminPage', 'Reset admin log selection to the latest log view');
         setSelectedLogTimestamp(null);
         setSelectedLogCorrelationId(null);
     }, []);
@@ -194,11 +224,16 @@ export function AdminPage() {
                                         Signed in as {currentUserName} with role {currentRoleLabel}.
                                     </p>
                                 </div>
-                                <div className="small text-body-secondary text-lg-end">
-                                    Configured admin user:{' '}
-                                    <span className="fw-semibold text-body">
-                                        {environmentSummary?.adminUserName ?? 'Not available'}
-                                    </span>
+                                <div className="d-flex flex-column align-items-start align-items-lg-end gap-2">
+                                    <div className="small text-body-secondary text-lg-end">
+                                        Configured admin user:{' '}
+                                        <span className="fw-semibold text-body">
+                                            {environmentSummary?.adminUserName ?? 'Not available'}
+                                        </span>
+                                    </div>
+                                    <Button variant="outline-secondary" size="sm" onClick={() => void loadAdminData()}>
+                                        Refresh admin data
+                                    </Button>
                                 </div>
                             </div>
                             <Nav

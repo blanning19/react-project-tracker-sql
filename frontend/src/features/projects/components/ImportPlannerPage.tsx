@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Col, Container, Form, Row, Spinner, Table } from 'react-bootstrap';
+import { Alert, Button, Card, Col, Container, Form, ListGroup, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { BACK_TO_MY_DASHBOARD_LABEL } from '../../../shared/constants/projectUi';
 import { useCurrentUser } from '../../auth/context/CurrentUserProvider';
@@ -82,7 +82,7 @@ export function ImportPlannerPage() {
                                 <p className="text-uppercase small mb-2 hero-kicker">Planner Import</p>
                                 <h1 className="display-6 fw-semibold mb-2">Import a Microsoft Planner workbook.</h1>
                                 <p className="mb-0 text-body-secondary">
-                                    Upload the Excel export, preview the parsed buckets and labels, then create a board-ready project.
+                                    Upload the Excel export, preview the parsed buckets and labels, then create a Planner-backed project in the current workspace.
                                 </p>
                             </div>
                             <Button variant="outline-secondary" onClick={() => navigate('/my-dashboard')}>
@@ -115,6 +115,17 @@ export function ImportPlannerPage() {
                                     Supported formats: `.xlsx` or `.xls` exported from Microsoft Planner.
                                 </Form.Text>
                             </Form.Group>
+
+                            {plannerFile ? (
+                                <Alert variant="info" className="d-flex flex-column gap-1">
+                                    <div>
+                                        <strong>Selected file:</strong> {plannerFile.name}
+                                    </div>
+                                    <div className="small text-body-secondary">
+                                        Size: {(plannerFile.size / 1024).toFixed(2)} KB
+                                    </div>
+                                </Alert>
+                            ) : null}
 
                             <div className="d-flex gap-2 mb-4">
                                 <Button type="button" variant="outline-primary" onClick={() => void handlePreview()} disabled={!plannerFile}>
@@ -158,11 +169,46 @@ export function ImportPlannerPage() {
                                             </tbody>
                                         </Table>
                                     </div>
+
+                                    {parsedProject.tasks.length > 12 ? (
+                                        <p className="small text-body-secondary mt-3 mb-0">
+                                            Showing the first 12 task rows in preview. The full workbook will still be imported.
+                                        </p>
+                                    ) : null}
                                 </>
                             ) : (
-                                <Alert variant="secondary" className="mb-0">
-                                    Select a workbook and preview it to validate the parsed Planner data.
-                                </Alert>
+                                <>
+                                    <Alert variant="secondary">
+                                        Select a workbook and preview it to validate the parsed Planner data before importing.
+                                    </Alert>
+
+                                    <Card className="border-0 bg-body-tertiary">
+                                        <Card.Body>
+                                            <p className="text-uppercase small text-body-secondary mb-1">How To Export</p>
+                                            <h2 className="h6 mb-3">Export from Microsoft Planner</h2>
+                                            <ol className="mb-3 text-body-secondary">
+                                                <li>Open the plan in Microsoft Planner.</li>
+                                                <li>Select the more-options menu.</li>
+                                                <li>Choose <strong>Export plan to Excel</strong>.</li>
+                                                <li>Save the downloaded workbook.</li>
+                                                <li>Upload that workbook here and preview the parsed tasks.</li>
+                                            </ol>
+
+                                            <p className="text-uppercase small text-body-secondary mb-1">What Gets Parsed</p>
+                                            <ListGroup variant="flush">
+                                                <ListGroup.Item className="px-0 bg-transparent">
+                                                    Task names, bucket names, and assignees
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="px-0 bg-transparent">
+                                                    Start dates, due dates, and progress state
+                                                </ListGroup.Item>
+                                                <ListGroup.Item className="px-0 bg-transparent">
+                                                    Labels, notes, and checklist items when present
+                                                </ListGroup.Item>
+                                            </ListGroup>
+                                        </Card.Body>
+                                    </Card>
+                                </>
                             )}
                         </Card.Body>
                     </Card>
